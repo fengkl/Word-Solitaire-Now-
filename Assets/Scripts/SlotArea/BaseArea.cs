@@ -9,21 +9,11 @@ public class BaseArea : MonoBehaviour
     public float interval; //卡槽间隔
     
     public GameObject slotPrefab; //卡槽预制体
-    
-    void Start()
-    {
-        Init();
-    }
-
-    void Update()
-    {
-        
-    }
 
     /// <summary>
     /// 初始化卡槽
     /// </summary>
-    private void Init()
+    public void Init()
     { 
         transform.position += new Vector3(-(interval / 2) * (slotCount - 1), 0, 0);
         

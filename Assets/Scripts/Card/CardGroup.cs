@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using Sequence = DG.Tweening.Sequence;
@@ -10,7 +11,7 @@ public class CardGroup : MonoBehaviour
 {
     [Header("牌组信息")]
     public List<Card> cards = new List<Card>(); // 牌组列表
-    public CategoryData category; // 牌组分类
+    public string category; // 牌组分类
     public int cardCount; // 卡牌数量
     public float cardGroupHigh; // 牌组高度
     public float gapSize; // 两牌之间的间距
@@ -42,14 +43,13 @@ public class CardGroup : MonoBehaviour
     [Header("拿起卡牌相关")]
     public bool canSelected; // 是否可以选中
     public bool isSelected; // 是否被选中
-    public CardGroup CurrentPickedCardGroup => GameManager.Instance.currentPickedCardGroup; // 当前拿着的牌组
+    
+    [Header("红点计数")]
+    public GameObject redPoint; // 红点
+    public TextMeshProUGUI countText; // 数量文本
+    public float redPointUpDistance; // 红点上升距离
 
-    public void Start()
-    {
-        bc = GetComponent<BoxCollider2D>();
-        
-        Init();
-    }
+    public bool IsInitializing => GameManager.Instance.isInitializing; // 是否初始化完成
 
     public void Update()
     {
@@ -59,8 +59,10 @@ public class CardGroup : MonoBehaviour
     /// <summary>
     /// 初始化
     /// </summary>
-    private void Init()
+    public void Init()
     {
+        bc = GetComponent<BoxCollider2D>();
+        
         Card[] cards = GetComponentsInChildren<Card>();
 
         foreach (var card in cards)
@@ -69,8 +71,8 @@ public class CardGroup : MonoBehaviour
         }
 
         cardCount = cards.Length;
-        category = cards[0].category; // 初始化种类
-        canSelected = true;
+        category = cards[0].cardCategory; // 初始化种类
+        canSelected = false;
         
         ChangeBoxColliderSize(); // 设置碰撞器的大小
     }
@@ -84,12 +86,13 @@ public class CardGroup : MonoBehaviour
         // 调整新增卡牌的图层先后
         if (cards.Count > 0)
         {
-            card.cardSurfaceSr.sortingOrder = cards[cards.Count - 1].cardSurfaceSr.sortingOrder - 3;
+            card.cardSurfaceSr.sortingOrder = cards[cards.Count - 1].cardSurfaceSr.sortingOrder - 5;
             if (card.cardBorderSr != null)
             {
-                card.cardBorderSr.sortingOrder = cards[cards.Count - 1].cardBorderSr.sortingOrder - 3;
+                card.cardBorderSr.sortingOrder = cards[cards.Count - 1].cardBorderSr.sortingOrder - 5;
             }
-            card.cardCanvas.sortingOrder = cards[cards.Count - 1].cardCanvas.sortingOrder - 3;
+            card.cardCanvas.sortingOrder = cards[cards.Count - 1].cardCanvas.sortingOrder - 5;
+            card.cardBackSr.sortingOrder = cards[cards.Count - 1].cardBackSr.sortingOrder - 5;
         }
 
         card.parent = gameObject;
@@ -99,7 +102,7 @@ public class CardGroup : MonoBehaviour
     /// <summary>
     /// 修改碰撞器尺寸，使其能包裹住所有子物体（这部分问的ai，注释是自己加的，以便理解）
     /// </summary>
-    private void ChangeBoxColliderSize()
+    public void ChangeBoxColliderSize()
     {
         // 创建一个包围盒
         Bounds bounds = new Bounds(transform.position, Vector3.zero);
@@ -109,20 +112,22 @@ public class CardGroup : MonoBehaviour
         {
             // 获取卡牌的边框，并扩展当前的包围盒边界，使其能包裹住所有卡牌
             bounds.Encapsulate(card.cardSurfaceSr.bounds);
+            bounds.Encapsulate(card.cardBackSr.bounds);
         }
         
         // 设置碰撞器的大小
-        bc.size = bounds.size; // 设置碰撞器尺寸
+        bc.size = bounds.size;
     }
     
     #region 鼠标操作相关
 
     private void OnMouseDown()
     {
-        // 牌组移动和无法选中时无法操作
-        if (isMoving || !canSelected) return;
+        // 【牌组移动】【无法选中】【处于初始化】时无法操作
+        if (isMoving || !canSelected || IsInitializing) return;
         
         isSelected = true; // 设置为被拿起
+        GameManager.Instance.isMovingCard = true; // 设置为正在移动卡牌
         originPos = transform.position; // 记录原始位置
 
         foreach (Card card in cards)
@@ -138,24 +143,26 @@ public class CardGroup : MonoBehaviour
             card.StartChangeScale(targetScale); // 变大一点
         }
         
+        DisplayCount(); // 显示数量
         GetOffset(); // 获得中心与鼠标的偏移量
         PickUpCardGroup(); // 拿起牌组
     }
 
     private void OnMouseUp()
     {
-        // 卡牌移动和无法选中时无法操作
-        if (isMoving || !canSelected) return;
+        // 【牌组移动】【无法选中】【处于初始化】时无法操作
+        if (isMoving || !canSelected || IsInitializing) return;
         
         foreach (Card card in cards)
         {
             card.StartChangeScale(originScale); // 变回原来的大小
         }
         
-        PlaceCardGroup(); // 放置卡牌
+        redPoint.SetActive(false);
+        PlaceCardGroup(currentSelectSlot); // 放置卡牌
         
-        // 设置为被放下
-        isSelected = false;
+        isSelected = false; // 设置为被放下
+        GameManager.Instance.isMovingCard = false;
     }
 
     private void OnMouseDrag()
@@ -194,9 +201,18 @@ public class CardGroup : MonoBehaviour
         {
             // 从卡槽栈中取出对应的牌组
             CardGroup cardGroup = currentSlot.allCardGroups.Pop();
+            
             for (int i = 0; i < cardGroup.cards.Count; i++)
             {
-                currentSlot.allCards.Pop();
+                if (currentSlot.allCards.Count != 0)
+                {
+                    currentSlot.allCards.Pop();
+                }
+            }
+
+            if (currentSlot as TakeAreaSlot)
+            {
+                (currentSlot as TakeAreaSlot).MoveCardGroupsToUp();
             }
             
             GameManager.Instance.currentPickedCardGroup = cardGroup; // 设置拿着的牌组为当前牌组
@@ -211,56 +227,65 @@ public class CardGroup : MonoBehaviour
     /// <summary>
     /// 放下牌组
     /// </summary>
-    private void PlaceCardGroup()
+    public void PlaceCardGroup(Slot selectedSlot)
     {
-        // 如果【被选中】，则放置卡牌
-        if (isSelected)
+        // 重置上一个卡槽的状态
+        if (currentSlot != null)
         {
-            // 重置上一个卡槽的状态
-            if (currentSlot != null)
+            if (currentSlot.allCardGroups.Count == 0)
             {
-                if (currentSlot.allCardGroups.Count == 0)
-                {
-                    currentSlot.isOccupied = false; // 取消占据状态
-                }
+                currentSlot.isOccupied = false; // 取消占据状态
             }
-            
-            ExecutePlaceCardGroup(); // 执行放置逻辑
         }
+        
+        ExecutePlaceCardGroup(selectedSlot); // 执行放置逻辑
     }
 
     /// <summary>
     /// 执行放置逻辑
     /// </summary>
-    private void ExecutePlaceCardGroup()
+    private void ExecutePlaceCardGroup(Slot selectedSlot)
     {
+        isMoving = true;
+        
+        // 处理盖牌情况
+        if (cards[0].isFaceDown)
+        {
+            currentSlot = selectedSlot;
+        }
         // 如果找到了可用卡槽，则设置为绑定的卡槽
-        if (currentSelectSlot != null)
+        else if (selectedSlot != null)
         {
             // 如果为叠牌区卡槽
-            if (currentSelectSlot.slotType == SlotType.StackArea)
+            if (selectedSlot.slotType == SlotType.StackArea)
             {
-                // 如果【卡槽为空】或【顶部卡牌为文字卡】
-                if (currentSelectSlot.allCards.Count == 0 || currentSelectSlot.allCards.Peek().cardType == CardType.Character)
+                // 如果【卡槽为空】或【卡槽顶部卡牌为同分类】的同时【卡槽顶部卡牌为文字卡】
+                if (selectedSlot.allCards.Count == 0 || 
+                    selectedSlot.allCards.Peek().cardCategory == category && selectedSlot.allCards.Peek().cardType == CardType.Character)
                 {
-                    currentSlot = currentSelectSlot;
+                    currentSlot = selectedSlot;
                 }
-                // 如果【顶部卡牌为分类卡】
-                else if (currentSelectSlot.allCards.Peek().cardType == CardType.Category)
+                // 如果【卡槽顶部卡牌为分类卡】
+                else if (selectedSlot.allCards.Peek().cardType == CardType.Category)
                 {
                     print("文字卡不能放置在分类卡上");
                 }
+                // 如果【卡槽顶部卡牌为不同分类】
+                else if (selectedSlot.allCards.Peek().cardCategory != category)
+                {
+                    print("你只能叠放同一分类的文字");
+                }
             }
             // 如果为基础区卡槽
-            else if (currentSelectSlot.slotType == SlotType.BaseArea)
+            else if (selectedSlot.slotType == SlotType.BaseArea)
             {
                 // 如果【卡槽为空】
-                if (currentSelectSlot.allCards.Count == 0)
+                if (selectedSlot.allCards.Count == 0)
                 {
-                    // 如果【当前拿着的牌组中包含分类卡】
-                    if (CurrentPickedCardGroup.cards[0].cardType == CardType.Category)
+                    // 如果【牌组中包含分类卡】
+                    if (cards[0].cardType == CardType.Category)
                     {
-                        currentSlot = currentSelectSlot;
+                        currentSlot = selectedSlot;
                     }
                     else
                     {
@@ -270,13 +295,13 @@ public class CardGroup : MonoBehaviour
                 // 如果【卡槽不为空】
                 else
                 {
-                    // 如果【当前拿着的牌组包含分类卡】
-                    if (CurrentPickedCardGroup.cards[0].cardType == CardType.Character)
+                    // 如果【牌组包含分类卡】
+                    if (cards[0].cardType == CardType.Character)
                     {
                         // 如果【文字卡与当前分类相同】
-                        if (CurrentPickedCardGroup.cards[0].cardType == currentSelectSlot.allCards.Peek().cardType)
+                        if (cards[0].cardCategory == selectedSlot.allCards.Peek().cardCategory)
                         {
-                            currentSlot = currentSelectSlot;
+                            currentSlot = selectedSlot;
                         }
                         else
                         {
@@ -288,7 +313,11 @@ public class CardGroup : MonoBehaviour
                         print("分类卡只能放在空的基础区");
                     }
                 }
-                
+            }
+            // 如果为取牌区卡槽
+            else if (selectedSlot.slotType == SlotType.TakeArea)
+            {
+                currentSlot = selectedSlot;
             }
         }
 
@@ -299,10 +328,9 @@ public class CardGroup : MonoBehaviour
             currentSlot.isOccupied = true;
             
             // 将当前卡牌压入卡槽栈
-            for (int i = CurrentPickedCardGroup.cards.Count - 1; i >= 0; i--)
+            for (int i = cards.Count - 1; i >= 0; i--)
             {
-                Card card = CurrentPickedCardGroup.cards[i];
-                currentSlot.allCards.Push(card);
+                currentSlot.allCards.Push(cards[i]);
             }
             
             // 如果为叠牌区卡槽
@@ -317,6 +345,12 @@ public class CardGroup : MonoBehaviour
                 // 移动到基础区
                 MovingCardToBaseAreaSlot(currentSlot as BaseAreaSlot);
             }
+            // 如果为取牌区卡槽
+            else if (currentSlot.slotType == SlotType.TakeArea)
+            {
+                // 移动到取牌区
+                MovingCardToTakeAreaSlot(currentSlot as TakeAreaSlot);
+            }
         }
         else
         {
@@ -326,64 +360,58 @@ public class CardGroup : MonoBehaviour
     
     #endregion
 
-    #region 移动动画相关
+    #region 移动至叠牌区相关
     
     /// <summary>
     /// 移动卡组至叠牌区卡槽
     /// </summary>
     public void MovingCardToStackAreaSlot(StackAreaSlot stackAreaSlot)
     {
-        isMoving = true;
-        
         int count = stackAreaSlot.allCards.Count - 1; // 计数器
         
-        // 未达到执行卡牌压缩的数量
-        if (count < stackAreaSlot.maxCardCount)
+        // 创建序列动画
+        Sequence sequence = DOTween.Sequence();
+        
+        // 遍历卡组中的所有卡牌,设置位置
+        foreach (Card card in stackAreaSlot.allCards)
         {
-            // 创建序列动画
-            Sequence sequence = DOTween.Sequence();
+            // 先与父物体卡组解绑
+            card.transform.parent = null;
             
-            // 遍历卡组中的所有卡牌,设置位置
-            foreach (Card card in stackAreaSlot.allCards)
+            // 获取目标位置
+            Vector3 cardTarget = stackAreaSlot.transform.position + new Vector3(0, -count * stackAreaSlot.gapSize, -(count + 1));
+
+            // 移动卡牌位置
+            sequence.Join(card.transform.DOMove(cardTarget, moveDuration))
+                .SetEase(Ease.InOutQuad);
+            
+            // 如果当前卡牌不是【盖着】【不是栈顶卡牌】且【文字未缩放过】
+            if (!card.isFaceDown && card != stackAreaSlot.allCards.Peek() && !card.isTextScale)
             {
-                // 先与父物体卡组解绑
-                card.transform.parent = null;
-                
-                // 获取目标位置
-                Vector3 cardTarget = stackAreaSlot.transform.position + new Vector3(0, -count * stackAreaSlot.gapSize, -1);
-
-                // 移动卡牌位置
-                sequence.Join(card.transform.DOMove(cardTarget, moveDuration))
-                    .SetEase(Ease.InOutQuad);
-                
-                // 如果当前卡牌不是栈顶卡牌，且文字未缩放过
-                if (card != stackAreaSlot.allCards.Peek() && !card.isTextScale)
-                {
-                    card.MovingCardText();
-                }
-
-                count--;
+                card.MovingCardTextToSmall();
             }
 
-            sequence.AppendCallback(() =>
-            {
-                // 合并牌组
-                if (stackAreaSlot.allCardGroups.Count > 0)
-                {
-                    CardGroup group1 = CurrentPickedCardGroup;
-                    CardGroup group2 = stackAreaSlot.allCardGroups.Pop();
-
-                    CardGroup newGroup = MergeGroup(group1, group2);
-                    stackAreaSlot.allCardGroups.Push(newGroup);
-                }
-                else
-                {
-                    stackAreaSlot.allCardGroups.Push(CurrentPickedCardGroup);
-                }
-
-                MovingCardGroupPosInStackAreaSlot(stackAreaSlot); // 移动牌组位置
-            });
+            count--;
         }
+
+        sequence.AppendCallback(() =>
+        {
+            // 合并牌组
+            if (stackAreaSlot.allCardGroups.Count > 0 && !stackAreaSlot.allCardGroups.Peek().cards[0].isFaceDown)
+            {
+                CardGroup group1 = this;
+                CardGroup group2 = stackAreaSlot.allCardGroups.Pop();
+
+                CardGroup newGroup = MergeGroup(group1, group2);
+                stackAreaSlot.allCardGroups.Push(newGroup);
+            }
+            else
+            {
+                stackAreaSlot.allCardGroups.Push(this);
+            }
+
+            MovingCardGroupPosInStackAreaSlot(stackAreaSlot); // 移动牌组位置
+        });
     }
 
     /// <summary>
@@ -392,10 +420,10 @@ public class CardGroup : MonoBehaviour
     private void MovingCardGroupPosInStackAreaSlot(StackAreaSlot stackAreaSlot)
     {
         // 用牌组最前和最后两张牌的位置计算牌组正中间的位置
-        float groupPos = (cards[0].transform.position.y - cards[cards.Count - 1].transform.position.y) / 2;
+        float groupPos = (cards[0].transform.position.y + cards[cards.Count - 1].transform.position.y) / 2;
         // 牌组的目标位置
-        Vector3 groupTarget = stackAreaSlot.transform.position + new Vector3(0, groupPos, -1);
-
+        Vector3 groupTarget = new Vector3(cards[0].transform.position.x, groupPos, cards[0].transform.position.z);
+        
         // 移动牌组位置
         transform.position = groupTarget;
         
@@ -415,11 +443,15 @@ public class CardGroup : MonoBehaviour
         {
             card.transform.parent = card.parent.transform;
         }
-            
+
         ChangeBoxColliderSize(); // 重新设置碰撞器大小
         
         isMoving = false;
     }
+    
+    #endregion
+    
+    #region 移动至基础区相关
     
     /// <summary>
     /// 移动卡组至基础区卡槽
@@ -428,44 +460,108 @@ public class CardGroup : MonoBehaviour
     {
         isMoving = true;
 
-        if (CurrentPickedCardGroup.cards.Count == 1)
+        // 设置卡槽所放置的分类卡和分类
+        if (baseAreaSlot.categoryCard == null)
         {
-            // 创建序列动画
-            Sequence sequence = DOTween.Sequence();
-
-            Card card = CurrentPickedCardGroup.cards[0];
+            baseAreaSlot.SetCategoryCard(cards[0] as CategoryCard);
             
+            // 处理分类卡与多张文字卡一起进入卡槽时，放入卡槽前微调分类卡的位置
+            if (cards.Count > 1)
+            {
+                baseAreaSlot.categoryCard.transform.position = cards[1].transform.position;
+            }
+            
+            // 调整图层
+            baseAreaSlot.categoryCard.cardSurfaceSr.sortingOrder -= 500;
+            baseAreaSlot.categoryCard.cardCanvas.sortingOrder -= 500;
+        }
+        baseAreaSlot.categoryData = category;
+        
+        // 隐藏计数文本
+        if (baseAreaSlot.allCards.Count > 1)
+        {
+            baseAreaSlot.categoryCard.countText.enabled = false;
+        }
+        
+        // 创建序列动画
+        Sequence sequence = DOTween.Sequence();
+
+        foreach (Card card in cards)
+        {
             // 先与父物体卡组解绑
             card.transform.parent = null;
             
+            // 跳过分类卡
+            if (card.cardType == CardType.Category && baseAreaSlot.categoryCard.isTextScale) continue;
+        
             // 获取目标位置
             Vector3 cardTarget = currentSlot.transform.position;
-            
+        
             // 移动卡牌位置
             sequence.Join(card.transform.DOMove(cardTarget, moveDuration))
                 .SetEase(Ease.InOutQuad);
-        
-        
-            sequence.AppendCallback(() =>
+                    
+            // 如果【放入卡组的卡牌数量大于1】且【当前遍历到的是最顶部卡牌】，则恢复文字大小
+            if (cards.Count > 1 && card == cards[1])
             {
-                // 合并牌组
-                if (baseAreaSlot.allCardGroups.Count > 0)
+                card.MovingCardTextToBig();
+            }
+        }
+    
+        // 移动后的处理
+        sequence.AppendCallback(() =>
+        {
+            if (baseAreaSlot.allCards.Count > 1)
+            {
+                if (baseAreaSlot.allCards.Count < baseAreaSlot.cardCount + 1)
                 {
-                    CardGroup group1 = CurrentPickedCardGroup;
-                    CardGroup group2 = baseAreaSlot.allCardGroups.Pop();
-            
-                    CardGroup newGroup = MergeGroup(group1, group2);
-                    baseAreaSlot.allCardGroups.Push(newGroup);
+                    // 创建进度点
+                    if (!baseAreaSlot.categoryCard.isTextScale)
+                    {
+                        baseAreaSlot.CreateProgressPoints();
+                    }
+
+                    // 点亮进度点
+                    if (baseAreaSlot.progressPointSrs.Count > 0)
+                    {
+                        baseAreaSlot.LightUpProgressPoint();
+                    }
                 }
                 else
                 {
-                    baseAreaSlot.allCardGroups.Push(CurrentPickedCardGroup);
+                    // 移除进度条
+                    baseAreaSlot.RemoveProgressPoints();
                 }
+            }
             
-                MovingCardGroupPosInBaseAreaSlot(baseAreaSlot); // 移动牌组位置
-            });
+            // 移动分类卡
+            if (baseAreaSlot.allCards.Count > 1 && !baseAreaSlot.categoryCard.isTextScale)
+            {
+                baseAreaSlot.categoryCard.MovingCardTextToSmall();
+                baseAreaSlot.categoryCard.MovingCardPos();
+            }
+            
+            // 合并牌组
+            if (baseAreaSlot.allCardGroups.Count > 0)
+            {
+                CardGroup group1 = this;
+                CardGroup group2 = baseAreaSlot.allCardGroups.Pop();
         
-        }
+                CardGroup newGroup = MergeGroup(group1, group2);
+                baseAreaSlot.allCardGroups.Push(newGroup);
+            }
+            else
+            {
+                baseAreaSlot.allCardGroups.Push(this);
+            }
+        
+            MovingCardGroupPosInBaseAreaSlot(baseAreaSlot); // 移动牌组位置
+
+            if (baseAreaSlot.allCards.Count == baseAreaSlot.cardCount + 1)
+            {
+                baseAreaSlot.PackCards();
+            }
+        });
     }
     
     /// <summary>
@@ -499,8 +595,32 @@ public class CardGroup : MonoBehaviour
         ChangeBoxColliderSize(); // 重新设置碰撞器大小
         
         isMoving = false;
+        canSelected = false;
     }
-
+    
+    #endregion
+    
+    #region 移动至取牌区相关
+    
+    /// <summary>
+    /// 移动卡组至取牌区卡槽
+    /// </summary>
+    public void MovingCardToTakeAreaSlot(TakeAreaSlot takeAreaSlot)
+    {
+        cards[0].cardSurfaceSr.sortingOrder -= 999;
+        if (cards[0].cardBorderSr != null)
+        {
+            cards[0].cardBorderSr.sortingOrder -= 999;
+        }
+        cards[0].cardCanvas.sortingOrder -= 999;
+        
+        takeAreaSlot.AddCard(this);
+        
+        isMoving = false;
+    }
+    
+    #endregion
+    
     /// <summary>
     /// 移动卡牌至原位
     /// </summary>
@@ -516,21 +636,19 @@ public class CardGroup : MonoBehaviour
             .OnComplete(() =>
             {
                 isMoving = false;
+                
+                foreach (Card card in cards)
+                {
+                    // 调整图层
+                    card.cardSurfaceSr.sortingOrder -= 999;
+                    if (card.cardBorderSr != null)
+                    {
+                        card.cardBorderSr.sortingOrder -= 999;
+                    }
+                    card.cardCanvas.sortingOrder -= 999;
+                }
             });
-        
-        foreach (Card card in cards)
-        {
-            // 调整图层
-            card.cardSurfaceSr.sortingOrder -= 999;
-            if (card.cardBorderSr != null)
-            {
-                card.cardBorderSr.sortingOrder -= 999;
-            }
-            card.cardCanvas.sortingOrder -= 999;
-        }
     }
-
-    #endregion
     
     #region 检测附近卡槽或卡牌相关
     
@@ -545,6 +663,10 @@ public class CardGroup : MonoBehaviour
         RaycastHit2D[] raycastHitsSlots = Physics2D.CircleCastAll(cards[0].transform.position, rayCastRadius,
             Vector2.up, rayCastDistance * (cards.Count - 1), LayerMask.GetMask("StackAreaSlot", "BaseAreaSlot"));
         
+        // 获取附近所有牌组
+        RaycastHit2D[] raycastHitsCardGroups = Physics2D.CircleCastAll(cards[0].transform.position, rayCastRadius,
+            Vector2.down, rayCastDistance * (cards.Count - 1), LayerMask.GetMask("CardGroup"));
+        
         Slot nearestSlot = null;
         float nearestDistance = float.MaxValue;
     
@@ -554,8 +676,10 @@ public class CardGroup : MonoBehaviour
             // 忽略被占据的卡槽
             if (slot.collider.gameObject.GetComponent<Slot>().isOccupied) continue;
             
+            // 计算距离
             float currentDistance = Vector3.Distance(slot.collider.transform.position, transform.position);
             
+            // 更新最近距离
             if (currentDistance < nearestDistance)
             {
                 nearestSlot = slot.collider.GetComponent<Slot>();
@@ -563,45 +687,31 @@ public class CardGroup : MonoBehaviour
             }
         }
         
-        currentSelectSlot = nearestSlot;
-        
-        // 如果没有找到卡槽，则寻找最近的牌组
-        if (nearestSlot == null)
+        // 寻找最近的牌组
+        foreach (RaycastHit2D cardGroup in raycastHitsCardGroups)
         {
-            // 获取附近所有卡牌
-            RaycastHit2D[] raycastHitsCardGroups = Physics2D.CircleCastAll(cards[0].transform.position, rayCastRadius,
-                Vector2.down, rayCastDistance * (cards.Count - 1), LayerMask.GetMask("CardGroup"));
+            // 排除自己的卡牌
+            if (cardGroup.collider.GetComponent<CardGroup>() == this) continue;
             
-            CardGroup nearestCardGroup = null;
-            nearestDistance = float.MaxValue;
+            // 排除不同分类的卡牌
+            if (cardGroup.collider.GetComponent<CardGroup>().category != category) continue;
             
-            // 寻找最近的卡牌
-            foreach (RaycastHit2D cardGroup in raycastHitsCardGroups)
+            // 排除取牌区的卡牌
+            if (cardGroup.collider.GetComponent<CardGroup>().currentSlot != null && 
+                cardGroup.collider.GetComponent<CardGroup>().currentSlot.slotType == SlotType.TakeArea) continue;
+            
+            // 计算距离
+            float currentDistance = Vector3.Distance(cardGroup.collider.transform.position, transform.position);
+            
+            // 更新最近距离
+            if (currentDistance < nearestDistance)
             {
-                // 排除自己的卡牌
-                if (cardGroup.collider.GetComponent<CardGroup>() == this) continue;
-                
-                // 排除不同分类的卡牌
-                if (cardGroup.collider.GetComponent<CardGroup>().category != category)
-                {
-                    print("分类不同");
-                    continue;
-                }
-                
-                float currentDistance = Vector3.Distance(cardGroup.collider.transform.position, transform.position);
-                
-                if (currentDistance < nearestDistance)
-                {
-                    nearestCardGroup = cardGroup.collider.GetComponent<CardGroup>(); // 找到最顶端的卡牌
-                    nearestDistance = currentDistance;
-                }
-            }
-            
-            if (nearestCardGroup != null)
-            {
-                currentSelectSlot = nearestCardGroup.currentSlot;
+                nearestSlot = cardGroup.collider.GetComponent<CardGroup>().currentSlot;
+                nearestDistance = currentDistance;
             }
         }
+        
+        currentSelectSlot = nearestSlot;
     }
 
     #endregion
@@ -624,6 +734,55 @@ public class CardGroup : MonoBehaviour
         Destroy(group2.gameObject); //销毁空牌组
 
         return group1;
+    }
+    
+    #endregion
+    
+    #region 游戏开始时的逻辑
+    
+    /// <summary>
+    /// 在开始时发牌
+    /// </summary>
+    public Vector3 DealCardOnStart(StackAreaSlot stackAreaSlot)
+    {
+        // 设置卡槽为被占据状态
+        stackAreaSlot.isOccupied = true;
+        currentSlot = stackAreaSlot;
+            
+        // 将卡牌添加到卡槽中
+        stackAreaSlot.allCards.Push(cards[0]);
+        
+        // 将牌组添加到卡槽中
+        stackAreaSlot.AddCard(this);
+
+        return stackAreaSlot.transform.position + new Vector3(0, -(stackAreaSlot.allCards.Count - 1) * stackAreaSlot.gapSize, -(stackAreaSlot.allCards.Count));
+    }
+    
+    #endregion
+    
+    #region 红点计数
+
+    public void DisplayCount()
+    {
+        int count = 0;
+
+        foreach (var card in cards)
+        {
+            if (card.cardType == CardType.Character)
+            {
+                count++;
+            }
+        }
+        
+        if (count <= 1) return;
+        
+        redPoint.SetActive(true);
+        
+        // 更新位置
+        redPoint.transform.position = new Vector3(transform.position.x, transform.position.y + redPointUpDistance * (cards.Count - 1), transform.position.z);
+
+        // 更新文本
+        countText.text = count.ToString();
     }
     
     #endregion

@@ -7,7 +7,8 @@ using UnityEngine;
 public enum SlotType
 {
     StackArea, // 堆叠区卡槽
-    BaseArea // 基础区卡槽
+    BaseArea, // 基础区卡槽
+    TakeArea // 取牌区卡槽
 }
 
 public class Slot : MonoBehaviour
@@ -23,15 +24,6 @@ public class Slot : MonoBehaviour
     public bool isLighting; // 是否高亮
     public SpriteRenderer borderRenderer; // 边缘高亮渲染器
     private Coroutine borderHighLightCoroutine; // 改变边缘高亮协程
-    
-    public List<Card> testCards = new List<Card>(); // 存储的卡牌
-    public List<CardGroup> testGroups = new List<CardGroup>(); // 存储的牌组
-
-    void Update()
-    {
-        testCards = allCards.ToList();
-        testGroups = allCardGroups.ToList();
-    }
 
     /// <summary>
     /// 改变边缘高亮协程
