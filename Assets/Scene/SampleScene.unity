@@ -914,8 +914,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 407f705e26e9a9d4c86aca7d7a1b5b26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MenuBackground: {fileID: 0}
-  GameBackground: {fileID: 0}
   MenuImages:
   - {fileID: 851392860}
   - {fileID: 1071094802}
