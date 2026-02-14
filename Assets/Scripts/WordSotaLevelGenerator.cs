@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine;
+using Random = System.Random;
 
 // ===================== 修正后的生成器核心类 =====================
 /// <summary>
@@ -241,7 +243,7 @@ public class WordSotaLevelGenerator {
                 levelData.TargetSlots.Add(newSlot);
                 continue;
             }
-
+            
             // 按固定标记填充：标记→随机数据，非标记→固定值
             foreach (string info in fixedSlot.Infos) {
                 if (info == StringLiteral_921) {
@@ -266,9 +268,36 @@ public class WordSotaLevelGenerator {
 
         // 8. 填充操作槽（直接复用fixedData.OperateSlots）
         foreach (WordSlotInfo fixedSlot in fixedData.OperateSlots) {
-            WordSlotInfo newSlot = new WordSlotInfo {
-                Infos = fixedSlot?.Infos != null ? new List<string>(fixedSlot.Infos) : new List<string>()
-            };
+            // WordSlotInfo newSlot = new WordSlotInfo {
+            //     Infos = fixedSlot?.Infos != null ? new List<string>(fixedSlot.Infos) : new List<string>()
+            // };
+            // levelData.OperateSlots.Add(newSlot);
+            
+            WordSlotInfo newSlot = new WordSlotInfo { Infos = new List<string>() };
+            if (fixedSlot?.Infos == null) {
+                levelData.OperateSlots.Add(newSlot);
+                continue;
+            }
+    
+            // 按固定标记填充：标记→随机数据，非标记→固定值（和TargetSlots相同的逻辑）
+            foreach (string info in fixedSlot.Infos) {
+                if (info == StringLiteral_921) {  // "*"
+                    // 填充随机单词
+                    if (randomWordList.Count > 0) {
+                        newSlot.Infos.Add(randomWordList[0]);
+                        randomWordList.RemoveAt(0);
+                    }
+                } else if (info == StringLiteral_462) {  // "#"
+                    // 填充随机分类名
+                    if (randomCategoryList.Count > 0) {
+                        newSlot.Infos.Add(randomCategoryList[0]);
+                        randomCategoryList.RemoveAt(0);
+                    }
+                } else {
+                    // 填充固定值
+                    newSlot.Infos.Add(info);
+                }
+            }
             levelData.OperateSlots.Add(newSlot);
         }
 

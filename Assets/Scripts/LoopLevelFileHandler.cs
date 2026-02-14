@@ -6,13 +6,13 @@ using UnityEngine;
 
 
 public class LoopLevelFileHandler {
-    private readonly Dictionary<string, List<string>> mCategoryDic;
+    private readonly Dictionary<string, List<string>> mCategoryDic = new Dictionary<string, List<string>>();
 
-    private readonly HashSet<string> mWordCategorySet;
+    private readonly HashSet<string> mWordCategorySet = new HashSet<string>();
 
-    private readonly HashSet<string> mSpriteCategorySet;
+    private readonly HashSet<string> mSpriteCategorySet = new HashSet<string>();
 
-    private readonly Dictionary<LevelMode, List<WordSotaLoopLevelData>> mLoopLevels;
+    private readonly Dictionary<LevelMode, List<WordSotaLoopLevelData>> mLoopLevels = new Dictionary<LevelMode, List<WordSotaLoopLevelData>>();
 
     private const int cMinWordsCnt = 3;
 
