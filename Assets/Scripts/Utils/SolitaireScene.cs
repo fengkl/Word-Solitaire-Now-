@@ -8,6 +8,7 @@ using UnityEngine.UI;
 public class SolitaireScene : MonoBehaviour
 {
     public Image bg;
+    public MenuGroup menuGroup;
     public BaseGroup baseGroup;
     public StackGroup stackGroup;
     public TakeGroup takeGroup;
@@ -15,7 +16,11 @@ public class SolitaireScene : MonoBehaviour
     public GameObject counterGroup;
     public GameObject highLightGroup;
     public GameObject progressPointGroup;
+    public TopGroup topGroup;
+    public BottomGroup bottomGroup;
     public GameObject moveGroup;
+    public ResultGroup resultGroup;
+    public SelectLevelPanelGroup selectLevelPanelGroup;
     
     [Header("卡牌预制体")]
     public CategoryCardActor categoryCardPrefabs;
@@ -38,7 +43,7 @@ public class SolitaireScene : MonoBehaviour
         GameDataUtils.Instance.solitaireScene = this;
         
         InitLevelData();
-        InitGame();
+        // InitGame();
     }
     
     private void InitLevelData()
@@ -57,19 +62,20 @@ public class SolitaireScene : MonoBehaviour
     {
         DisableScene();
         
-        // 加载关卡
-        GameDataUtils.Instance.LoadTestLevel();
+        ResetGame();
 
         levelData = GameDataUtils.Instance.levelData; // 获取关卡数据
         aimCount = levelData.KVPs.Count; // 获取目标数量（卡牌种类总数）
         baseSlotCnt = levelData.TargetSlotCnt; // 获取基础区的卡槽数量
         stackSlotCnt = levelData.OperateSlotCnt; // 获取叠牌区的卡槽数量
         
+        SetAllGameGroupActive(true);
+        
         baseGroup.Init(baseSlotCnt, levelData.TargetSlots);
         stackGroup.Init(stackSlotCnt, levelData.OperateSlots);
         
-        takeGroup.gameObject.SetActive(true);
-        counterGroup.gameObject.SetActive(true);
+        topGroup.InitProgressBar(aimCount);
+        topGroup.gameMode.SetModeText(levelData.Mode.ToString(), LevelData.levelIdDict[levelData.Mode]);
         
         SetHighlightGroup();
         SetProgressPointGroup();
@@ -145,33 +151,12 @@ public class SolitaireScene : MonoBehaviour
                 card.FlipCard(0); 
                 card.isMoving = false;
                 card.canSelected = false;
-                
-                // Vector3 cardPos = cardGroup.DealCardToBaseSlotOnStart(baseArea.slots[i]);
-                // cardGroup.transform.position = cardPos;
-                //
-                // // 创建进度点
-                // if (baseArea.slots[i].allCards.Count > 1)
-                // {
-                //     if (baseArea.slots[i].allCards.Count < baseArea.slots[i].cardCount + 1)
-                //     {
-                //         // 创建进度点
-                //         if (!baseArea.slots[i].categoryCard.isTextScale)
-                //         {
-                //             baseArea.slots[i].CreateProgressPoints();
-                //         }
-                //
-                //         // 点亮进度点
-                //         if (baseArea.slots[i].progressPointSrs.Count > 0)
-                //         {
-                //             baseArea.slots[i].LightUpProgressPoint();
-                //         }
-                //     }
-                //     else
-                //     {
-                //         // 移除进度条
-                //         baseArea.slots[i].RemoveProgressPoints();
-                //     }
-                // }
+
+                if (targetSlot.cards.Count > 1)
+                {
+                    targetSlot.CreateProgressPoints();
+                    targetSlot.LightUpProgressPoint();
+                }
         
                 // 调整分类卡的位置
                 if (targetSlot.cards.Count > 1 && !targetSlot.categoryCard.isTextScale)
@@ -213,11 +198,10 @@ public class SolitaireScene : MonoBehaviour
         
         // 将剩余的牌移动到取牌区
         MovingLeftCardsToTakeArea();
-
-        // SetTimerStartOrStop(true);
         
         yield return new WaitForSeconds(0.5f);
         
+        topGroup.StartTimer();
         EnableScene();
     }
     
@@ -286,4 +270,105 @@ public class SolitaireScene : MonoBehaviour
     }
     
     #endregion
+
+    /// <summary>
+    /// 检查是否完成
+    /// </summary>
+    public void CheckComplete()
+    {
+        if (GameDataUtils.Instance.completeCount == GameDataUtils.Instance.aimCount)
+        {
+            StartCoroutine(HandleGameComplete());
+        }
+    }
+
+    /// <summary>
+    /// 处理游戏完成
+    /// </summary>
+    public IEnumerator HandleGameComplete()
+    {
+        yield return new WaitForSeconds(0.2f);
+        
+        baseGroup.gameObject.SetActive(false);
+        stackGroup.gameObject.SetActive(false);
+        takeGroup.gameObject.SetActive(false);
+        cardGroup.gameObject.SetActive(false);
+        counterGroup.gameObject.SetActive(false);
+        bottomGroup.gameObject.SetActive(false);
+        
+        LevelData.levelIdDict[GameDataUtils.Instance.mode]++;
+        topGroup.gameTimer.StopTimer();
+        resultGroup.Init();
+        resultGroup.gameObject.SetActive(true);
+    }
+    
+    /// <summary>
+    /// 设置游戏面板可见
+    /// </summary>
+    public void SetAllGameGroupActive(bool isActive)
+    {
+        baseGroup.gameObject.SetActive(isActive);
+        stackGroup.gameObject.SetActive(isActive);
+        takeGroup.gameObject.SetActive(isActive);
+        cardGroup.gameObject.SetActive(isActive);
+        if (takeGroup.homeSlot.cards.Count >= 1)
+        {
+            counterGroup.gameObject.SetActive(isActive);
+        }
+        highLightGroup.gameObject.SetActive(isActive);
+        progressPointGroup.gameObject.SetActive(isActive);
+        topGroup.gameObject.SetActive(isActive);
+        bottomGroup.gameObject.SetActive(isActive);
+        moveGroup.gameObject.SetActive(isActive);
+    }
+
+    /// <summary>
+    /// 重置游戏
+    /// </summary>
+    public void ResetGame()
+    {
+        GameDataUtils.Instance.cardActors.Clear();
+        takeGroup.homeSlot.cards.Clear();
+        takeGroup.leftSlot.cards.Clear();
+        takeGroup.rightSlot.cards.Clear();
+        
+        topGroup.gameTimer.ResetTimer();
+        
+        foreach (Transform child in baseGroup.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (Transform child in stackGroup.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (Transform child in cardGroup.transform)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// 回到主界面
+    /// </summary>
+    public void BackToMenu()
+    {
+        SetAllGameGroupActive(false);
+        
+        topGroup.gameTimer.StopTimer();
+        menuGroup.UpdateText();
+        menuGroup.SetContinueButton();
+        
+        // 创建动画序列
+        Sequence sequence = DOTween.Sequence();
+
+        sequence.Join(bg.DOFade(0f, 0.2f));
+        
+        sequence.OnComplete(() =>
+        {
+            bg.raycastTarget = false;
+        });
+    }
 }

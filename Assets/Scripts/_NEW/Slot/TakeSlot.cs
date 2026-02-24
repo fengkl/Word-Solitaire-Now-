@@ -19,38 +19,60 @@ public class TakeSlot : Slot_New
     /// </summary>
     public override Sequence UpdateCardsPos()
     {
+        // 创建动画序列
+        Sequence sequence = DOTween.Sequence();
+        Tween tween;
+        
         int count = 0;
 
         foreach (var card in cards)
         {
+            card.transform.SetAsFirstSibling();
+            
             // 如果取牌区没牌
             if (count == 0)
             {
-                card.transform.DOMove(new Vector3(transform.position.x, transform.position.y, transform.position.z + 1), moveToTakeAreaTime);
+                tween = card.transform.DOMove(new Vector3(transform.position.x, transform.position.y, transform.position.z + 1), moveToTakeAreaTime);
+                sequence.Join(tween);
                 card.MovingCardTextToBig();
                 count++;
             }
             // 如果取牌区有牌，且还没达到折叠文字的数量
             else if (count < maxFrontDisplayCount)
             {
-                card.transform.DOMove(new Vector3(transform.position.x, 
+                tween = card.transform.DOMove(new Vector3(transform.position.x, 
                         transform.position.y + frontGapSize * count, 
                         count + 1), 
                     moveToTakeAreaTime);
+                sequence.Join(tween);
                 card.MovingCardTextToSmall();
                 count++;
             }
             // 如果取牌区有牌，且已经达到折叠文字的数量
             else if (count < maxFrontDisplayCount + maxBackDisplayCount)
             {
-                card.transform.DOMove(new Vector3(transform.position.x, 
+                tween = card.transform.DOMove(new Vector3(transform.position.x, 
                         transform.position.y + frontGapSize * (maxFrontDisplayCount - 1) + backGapSize * (count - maxFrontDisplayCount + 1), 
                         count + 1), 
                     moveToTakeAreaTime);
+                sequence.Join(tween);
                 count++;
             }
         }
 
-        return null;
+        UpdateCardsCanSelect();
+
+        return sequence;
+    }
+
+    /// <summary>
+    /// 设置卡牌是否可以拿取
+    /// </summary>
+    private void UpdateCardsCanSelect()
+    {
+        foreach (var card in cards)
+        {
+            card.canSelected = card == cards.Peek();
+        }
     }
 }

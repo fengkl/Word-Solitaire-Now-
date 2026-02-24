@@ -19,6 +19,8 @@ public class GameDataUtils
     public LoopLevelFileHandler loopLevelHandler;
     
     public GameplayLevelData levelData;
+    public LevelMode mode;
+    public int levelId = 0;
     public int aimCount; // 目标数量
     public int completeCount; // 完成数量
 
@@ -83,8 +85,8 @@ public class GameDataUtils
     /// </summary>
     public void LoadLevel(LevelMode mode)
     {
-        int levelId = LevelData.levelIdDict[mode];
-        
+        levelId = LevelData.levelIdDict[mode];
+        this.mode = mode;
         int randomSeed = Random.Range(0, 9999); // 随机种子
 
         // 使用难度，id和种子来获取关卡数据
@@ -92,6 +94,10 @@ public class GameDataUtils
         {
             Debug.Log($"成功加载关卡 {levelId}");
             Debug.Log(levelData.ToString());
+            
+            this.levelData = levelData;
+            
+            aimCount = levelData.KVPs.Count;
         }
     }
     

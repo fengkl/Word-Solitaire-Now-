@@ -30,7 +30,7 @@ public class Slot_New : MonoBehaviour
     {
         keyPos = (transform as RectTransform).position;
         slotWidth = (transform as RectTransform).rect.width;
-            slotHeight = (transform as RectTransform).rect.height;
+        slotHeight = (transform as RectTransform).rect.height;
     }
 
     private void Update()

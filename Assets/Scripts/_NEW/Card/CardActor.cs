@@ -44,6 +44,10 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     
     [Header("拖拽参数")] 
     public Vector3 offset; // 偏移量
+
+    [Header("红点")] 
+    public GameObject redPoint;
+    public Text redCountText;
     
     private Sequence moveSequence; // 移动序列
 
@@ -52,6 +56,9 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public void OnPointerDown(PointerEventData eventData)
     {
         if (isMoving || !canSelected) return;
+
+        int count = 0;
+        CardActor redCard = null;
 
         // 让所有被选择的牌放大
         foreach (var card in currentSlot.cards)
@@ -62,6 +69,12 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 if (!card.isFaceDown)
                 {
                     card.StartChangeScale(originScale * 1.05f);
+
+                    if (card.cardType == CardType.Character)
+                    {
+                        count++;
+                        redCard = card;
+                    }
                 }
             }
             // 如果为取牌卡槽，则只放大第一张牌
@@ -71,6 +84,14 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 break;
             }
         }
+
+        // 判断红点是否启用
+        if (count > 1 && redCard != null)
+        {
+            redCard.redCountText.text = count.ToString();
+            redCard.redPoint.SetActive(true);
+            print(count);
+        }
     }
     
     public void OnPointerUp(PointerEventData eventData)
@@ -79,6 +100,10 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         foreach (var card in currentSlot.cards)
         {
             card.StartChangeScale(originScale);
+            if (card.redPoint != null)
+            {
+                card.redPoint.SetActive(false);
+            }
         }
     }
     
@@ -168,7 +193,6 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         // 启用检测到的第一个卡槽的高亮
         foreach (var slot in allSlots)
-        // foreach (var slot in GameDataUtils.Instance.operateSlots)
         {
             if (slot == currentSlot) continue;
             
@@ -192,13 +216,12 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     
     public void OnEndDrag(PointerEventData eventData)
     {
-        // 计算获取附近可用卡槽
+        // 获取附近可用卡槽
         List<Slot_New> allSlots = GameDataUtils.Instance.GetAllSlots();
         
         dragMove.keyPos = dragMove.cards.Peek().transform.position;
 
         foreach (var slot in allSlots)
-        // foreach (var slot in GameDataUtils.Instance.operateSlots)
         {
             if (slot == currentSlot) continue;
             
@@ -228,6 +251,11 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 }
                 
                 moveSequence = slot.AddCard(dragMove.cards); // 将卡牌添加到目标卡槽
+                moveSequence.OnComplete(() => 
+                {
+                    dragMove.MoveToCardGroup();
+                });
+                
                 slot.DisableHighLight(); // 禁用边缘高亮
                 break;
             }
@@ -236,31 +264,31 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // 如果没有找到可用卡槽
         if (dragMove.to == null)
         {
-            foreach (var card in dragMove.cards)
+            // 如果为取牌区的卡牌
+            if (dragMove.from as TakeSlot != null)
             {
-                // 如果为取牌区的卡牌
-                if (card.currentSlot as TakeSlot != null)
-                {
-                    (card.currentSlot as TakeSlot).AddCard(card);
-                }
-                // 如果为叠牌区的卡牌
-                else if (card.currentSlot as OperateSlot != null)
-                {
-                    (card.currentSlot as OperateSlot).AddCard(card);
-                }
+                moveSequence = (dragMove.from as TakeSlot).AddCard(dragMove.cards);
             }
+            // 如果为叠牌区的卡牌
+            else if (dragMove.from as OperateSlot != null)
+            {
+                moveSequence = (dragMove.from as OperateSlot).AddCard(dragMove.cards);
+            }
+            
+            moveSequence.OnComplete(() => 
+            {
+                dragMove.MoveToCardGroup();
+            });
         }
         
         // 让所有被选择的牌恢复原始大小
         foreach (var card in dragMove.cards)
         {
             card.StartChangeScale(originScale);
-        }
-
-        if (moveSequence != null && moveSequence.IsComplete())
-        {
-            dragMove.MoveToCardGroup(); // 移回到cardGroup
-            dragMove = null;
+            if (card.redPoint != null)
+            {
+                card.redPoint.SetActive(false);
+            }
         }
     }
 

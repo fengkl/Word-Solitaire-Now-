@@ -25,7 +25,7 @@ public class TargetSlot : Slot_New
         // 创建动画序列
         Sequence sequence = DOTween.Sequence();
         
-        // 如果仅有一张卡
+        // 如果卡槽仅有一张卡，那么一定是分类卡
         if (cards.Count == 1)
         {
             categoryCard.isMoving = true;
@@ -43,7 +43,7 @@ public class TargetSlot : Slot_New
         {
             foreach (var card in cards)
             {
-                if (card.cardType == CardType.Category) continue;
+                if (card.cardType == CardType.Category && card.isTextScale) continue;
                 
                 card.isMoving = true;
                 
@@ -54,8 +54,10 @@ public class TargetSlot : Slot_New
                 {
                     card.isMoving = false;
                     card.canSelected = false;
-                    card.transform.SetAsFirstSibling();
+                    card.transform.SetAsLastSibling();
                 });
+                
+                sequence.Join(tween);
                 
                 card.MovingCardTextToBig();
             }
@@ -67,6 +69,7 @@ public class TargetSlot : Slot_New
                 categoryCard.MovingCardPos();
                 categoryCard.MovingCardTextToSmall();
 
+                // 处理牌组完成时的打包
                 if (cards.Count == categoryCard.cardCount + 1)
                 {
                     RemoveProgressPoints();
@@ -74,7 +77,7 @@ public class TargetSlot : Slot_New
                 }
             });
             
-            LightUpProgressPoint();
+            LightUpProgressPoint(); // 点亮进度点
         }
         
         return sequence;
@@ -174,17 +177,16 @@ public class TargetSlot : Slot_New
             
             // 完成计数+1
             GameDataUtils.Instance.completeCount++;
-            // GameManager.Instance.SetProgress();
-            
-            print(GameDataUtils.Instance.aimCount);
-            print(GameDataUtils.Instance.completeCount);
+            GameDataUtils.Instance.solitaireScene.topGroup.gameProgressBar.SetProgress(GameDataUtils.Instance.completeCount, GameDataUtils.Instance.aimCount);
     
             // 重置卡槽
             if (GameDataUtils.Instance.aimCount - GameDataUtils.Instance.completeCount >= 4)
             {
-                print(1);
                 ReSet();
             }
+            
+            // 判断是否完成游戏
+            GameDataUtils.Instance.solitaireScene.CheckComplete();
         });
     }
     
