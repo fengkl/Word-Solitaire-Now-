@@ -48,6 +48,8 @@ public class OperateSlot : Slot_New
             count--;
         }
 
+        UpdateKeyPosAndHeight();
+
         return sequence;
     }
 
