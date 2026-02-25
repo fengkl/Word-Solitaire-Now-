@@ -4,13 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public enum SlotType
-{
-    StackArea, // 堆叠区卡槽
-    BaseArea, // 基础区卡槽
-    TakeArea // 取牌区卡槽
-}
-
 public class Slot : MonoBehaviour
 {
     public SlotType slotType;

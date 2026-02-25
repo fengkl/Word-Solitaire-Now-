@@ -262,7 +262,7 @@ public class CardGroup : MonoBehaviour
         else if (selectedSlot != null)
         {
             // 如果为叠牌区卡槽
-            if (selectedSlot.slotType == SlotType.StackArea)
+            if (selectedSlot.slotType == SlotType.OperateSlot)
             {
                 // 如果【卡槽为空】或【卡槽顶部卡牌为同分类】的同时【卡槽顶部卡牌为文字卡】
                 if (selectedSlot.allCards.Count == 0 || 
@@ -282,7 +282,7 @@ public class CardGroup : MonoBehaviour
                 }
             }
             // 如果为基础区卡槽
-            else if (selectedSlot.slotType == SlotType.BaseArea)
+            else if (selectedSlot.slotType == SlotType.TargetSlot)
             {
                 // 如果【卡槽为空】
                 if (selectedSlot.allCards.Count == 0)
@@ -320,7 +320,7 @@ public class CardGroup : MonoBehaviour
                 }
             }
             // 如果为取牌区卡槽
-            else if (selectedSlot.slotType == SlotType.TakeArea)
+            else if (selectedSlot.slotType == SlotType.HomeSlot)
             {
                 currentSlot = selectedSlot;
             }
@@ -339,19 +339,19 @@ public class CardGroup : MonoBehaviour
             }
             
             // 如果为叠牌区卡槽
-            if (currentSlot.slotType == SlotType.StackArea)
+            if (currentSlot.slotType == SlotType.OperateSlot)
             {
                 // 移动到叠牌区
                 MovingCardToStackAreaSlot(currentSlot as StackAreaSlot);
             }
             // 如果为基础区卡槽
-            else if (currentSlot.slotType == SlotType.BaseArea)
+            else if (currentSlot.slotType == SlotType.TargetSlot)
             {
                 // 移动到基础区
                 MovingCardToBaseAreaSlot(currentSlot as BaseAreaSlot);
             }
             // 如果为取牌区卡槽
-            else if (currentSlot.slotType == SlotType.TakeArea)
+            else if (currentSlot.slotType == SlotType.HomeSlot)
             {
                 // 移动到取牌区
                 MovingCardToTakeAreaSlot(currentSlot as TakeAreaSlot);
@@ -703,7 +703,7 @@ public class CardGroup : MonoBehaviour
             
             // 排除取牌区的卡牌
             if (cardGroup.collider.GetComponent<CardGroup>().currentSlot != null && 
-                cardGroup.collider.GetComponent<CardGroup>().currentSlot.slotType == SlotType.TakeArea) continue;
+                cardGroup.collider.GetComponent<CardGroup>().currentSlot.slotType == SlotType.HomeSlot) continue;
             
             // 计算距离
             float currentDistance = Vector3.Distance(cardGroup.collider.transform.position, transform.position);

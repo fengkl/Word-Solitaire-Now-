@@ -43,7 +43,6 @@ public class SolitaireScene : MonoBehaviour
         GameDataUtils.Instance.solitaireScene = this;
         
         InitLevelData();
-        // InitGame();
     }
     
     private void InitLevelData()
@@ -61,15 +60,23 @@ public class SolitaireScene : MonoBehaviour
     public void InitGame()
     {
         DisableScene();
-        
-        ResetGame();
+        SetAllGameGroupActive(true);
+        BuildScene();
+        GenerateCards(); // 生成卡牌
+        StartCoroutine(DealCards()); // 发牌
+    }
 
+    /// <summary>
+    /// 构建场景
+    /// </summary>
+    public void BuildScene()
+    {
+        ResetScene();
         levelData = GameDataUtils.Instance.levelData; // 获取关卡数据
+        print(levelData);
         aimCount = levelData.KVPs.Count; // 获取目标数量（卡牌种类总数）
         baseSlotCnt = levelData.TargetSlotCnt; // 获取基础区的卡槽数量
         stackSlotCnt = levelData.OperateSlotCnt; // 获取叠牌区的卡槽数量
-        
-        SetAllGameGroupActive(true);
         
         baseGroup.Init(baseSlotCnt, levelData.TargetSlots);
         stackGroup.Init(stackSlotCnt, levelData.OperateSlots);
@@ -79,12 +86,15 @@ public class SolitaireScene : MonoBehaviour
         
         SetHighlightGroup();
         SetProgressPointGroup();
-        
-        GenerateCards();
     }
 
+    /// <summary>
+    /// 生成卡牌
+    /// </summary>
     public void GenerateCards()
     {
+        GameDataUtils.Instance.cardActors.Clear();
+        
         for (int i = 0; i < aimCount; i++)
         {
             string category = levelData.KVPs[i].Category;
@@ -114,9 +124,6 @@ public class SolitaireScene : MonoBehaviour
                 GameDataUtils.Instance.cardActors.Add(word, characterCard);
             }
         }
-        
-        // 发牌
-        StartCoroutine(DealCards());
     }
 
     /// <summary>
@@ -326,9 +333,9 @@ public class SolitaireScene : MonoBehaviour
     }
 
     /// <summary>
-    /// 重置游戏
+    /// 重置场景
     /// </summary>
-    public void ResetGame()
+    public void ResetScene()
     {
         GameDataUtils.Instance.cardActors.Clear();
         takeGroup.homeSlot.cards.Clear();
@@ -383,5 +390,14 @@ public class SolitaireScene : MonoBehaviour
         {
             bg.raycastTarget = false;
         });
+    }
+
+    /// <summary>
+    /// 加载存档
+    /// </summary>
+    public void LoadGame()
+    {
+        BuildScene();
+        GenerateCards();
     }
 }

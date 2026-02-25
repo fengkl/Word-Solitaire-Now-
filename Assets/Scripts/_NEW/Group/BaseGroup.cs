@@ -30,6 +30,8 @@ public class BaseGroup : MonoBehaviour
             TargetSlot slot = Instantiate(slotPrefab).GetComponent<TargetSlot>();
             slot.transform.SetParent(transform);
             slot.transform.localPosition = slotPosition;
+            slot.slotId = i + 20;
+            slot.slotType = SlotType.TargetSlot;
             slot.cardInfos = infos[i].Infos;
             
             GameDataUtils.Instance.targetSlots.Add(slot);

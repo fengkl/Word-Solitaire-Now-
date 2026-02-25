@@ -10,6 +10,8 @@ public class Slot_New : MonoBehaviour
     // 初始数据
     public List<string> cardInfos;
     
+    public int slotId;
+    public SlotType slotType;
     public Stack<CardActor> cards = new Stack<CardActor>(); // 卡牌栈
     
     [Header("计算判定数据")]

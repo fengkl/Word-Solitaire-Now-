@@ -23,6 +23,8 @@ public class GameDataUtils
     public int levelId = 0;
     public int aimCount; // 目标数量
     public int completeCount; // 完成数量
+    
+    public GameState savedState; // 残局数据
 
     /// <summary>
     /// 加载关卡（测试）
@@ -83,11 +85,11 @@ public class GameDataUtils
     /// <summary>
     /// 加载关卡
     /// </summary>
-    public void LoadLevel(LevelMode mode)
+    public void LoadLevel(LevelMode mode, int randomSeed = -1)
     {
         levelId = LevelData.levelIdDict[mode];
         this.mode = mode;
-        int randomSeed = Random.Range(0, 9999); // 随机种子
+        randomSeed = randomSeed == -1 ? Random.Range(0, 9999) : randomSeed; // 随机种子
 
         // 使用难度，id和种子来获取关卡数据
         if (levelHandler.TryGetLevelData(mode, levelId, randomSeed, out var levelData))

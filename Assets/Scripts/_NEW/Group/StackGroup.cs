@@ -30,6 +30,8 @@ public class StackGroup : MonoBehaviour
             OperateSlot slot = Instantiate(slotPrefab).GetComponent<OperateSlot>();
             slot.transform.SetParent(transform);
             slot.transform.localPosition = slotPosition;
+            slot.slotId = i + 10;
+            slot.slotType = SlotType.OperateSlot;
             slot.cardInfos = infos[i].Infos;
             
             GameDataUtils.Instance.operateSlots.Add(slot);

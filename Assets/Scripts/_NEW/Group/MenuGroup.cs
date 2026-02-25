@@ -33,6 +33,12 @@ public class MenuGroup : MonoBehaviour
 
     public void SetContinueButton()
     {
+        // 检查是否有保存的残局
+        if (GameStateManager.Instance.HasSaveGameState())
+        {
+            GameDataUtils.Instance.savedState = GameStateManager.Instance.LoadSavedGameState();
+        }
+        
         if (GameDataUtils.Instance.levelId == 0)
         {
             continueButton.SetActive(false);
@@ -50,7 +56,7 @@ public class MenuGroup : MonoBehaviour
     {
         LevelMode mode = (LevelMode)modeIndex;
         GameDataUtils.Instance.LoadLevel(mode);
-        StartGame();
+        StartNewGame();
     }
 
     /// <summary>
@@ -80,7 +86,7 @@ public class MenuGroup : MonoBehaviour
     /// <summary>
     /// 开始游戏
     /// </summary>
-    private void StartGame()
+    private void StartNewGame()
     {
         GameDataUtils.Instance.solitaireScene.resultGroup.gameObject.SetActive(false);
         
@@ -102,6 +108,8 @@ public class MenuGroup : MonoBehaviour
     /// </summary>
     public void ContinueGame()
     {
+        GameDataUtils.Instance.solitaireScene.LoadGame();
+        
         // 创建动画序列
         Sequence sequence = DOTween.Sequence();
 
