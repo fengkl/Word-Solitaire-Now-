@@ -70,7 +70,7 @@ public class MenuGroup : MonoBehaviour
     public void CloseSelectLevelPanel(int customDuration = -1)
     {
         mask.DOFade(0, customDuration != -1 ? customDuration : 0.2f);
-        selectPanel.transform.DOMoveY(-1350, customDuration != -1 ? customDuration : 0.2f).OnComplete(() =>
+        selectPanel.transform.DOMoveY(-1500, customDuration != -1 ? customDuration : 0.2f).OnComplete(() =>
         {
             selectPanel.SetActive(false);
             mask.raycastTarget = false;

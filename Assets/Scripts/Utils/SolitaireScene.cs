@@ -14,8 +14,8 @@ public class SolitaireScene : MonoBehaviour
     public TakeGroup takeGroup;
     public CardGroup_New cardGroup;
     public GameObject counterGroup;
-    public GameObject highLightGroup;
-    public GameObject progressPointGroup;
+    public HighLightGroup highLightGroup;
+    public ProgressPointGroup progressPointGroup;
     public TopGroup topGroup;
     public BottomGroup bottomGroup;
     public GameObject moveGroup;
@@ -228,11 +228,13 @@ public class SolitaireScene : MonoBehaviour
         foreach (var slot in GameDataUtils.Instance.operateSlots)
         {
             slot.highLightBorder.transform.SetParent(highLightGroup.transform);
+            highLightGroup.HighLightList.Add(slot.highLightBorder.gameObject);
         }
 
         foreach (var slot in GameDataUtils.Instance.targetSlots)
         {
             slot.highLightBorder.transform.SetParent(highLightGroup.transform);
+            highLightGroup.HighLightList.Add(slot.highLightBorder.gameObject);
         }
     }
     
@@ -244,6 +246,7 @@ public class SolitaireScene : MonoBehaviour
         foreach (var slot in GameDataUtils.Instance.targetSlots)
         {
             slot.progressPointsBar.transform.SetParent(progressPointGroup.transform);
+            progressPointGroup.progressPointsList.Add(slot.progressPointsBar);
         }
     }
 
@@ -345,6 +348,16 @@ public class SolitaireScene : MonoBehaviour
         }
 
         foreach (Transform child in cardGroup.transform)
+        {
+            Destroy(child.gameObject);
+        }
+        
+        foreach (Transform child in highLightGroup.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (Transform child in progressPointGroup.transform)
         {
             Destroy(child.gameObject);
         }

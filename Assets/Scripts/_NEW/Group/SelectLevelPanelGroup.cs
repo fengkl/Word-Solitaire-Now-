@@ -32,7 +32,7 @@ public class SelectLevelPanelGroup : MonoBehaviour
     /// </summary>
     public void CloseSelectLevelPanel(int customDuration = -1)
     {
-        gameObject.transform.DOMoveY(-1350, customDuration != -1 ? customDuration : 0.2f).OnComplete(() =>
+        gameObject.transform.DOMoveY(-1500, customDuration != -1 ? customDuration : 0.2f).OnComplete(() =>
         {
             gameObject.SetActive(false);
         });
