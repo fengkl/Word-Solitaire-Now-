@@ -90,7 +90,6 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         {
             redCard.redCountText.text = count.ToString();
             redCard.redPoint.SetActive(true);
-            print(count);
         }
     }
     

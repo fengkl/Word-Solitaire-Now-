@@ -89,7 +89,7 @@ public class TargetSlot : Slot_New
     public override void UpdateKeyPosAndHeight()
     {
         float posOffset = 0;
-        float height = (transform as RectTransform).rect.height;
+        float height = (transform as RectTransform).rect.height + 4;
 
         if (cards.Count > 1)
         {
