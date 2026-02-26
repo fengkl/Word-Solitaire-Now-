@@ -15,6 +15,11 @@ public class GameProgressBar : MonoBehaviour
     /// </summary>
     public void Init(int aimCount)
     {
+        if (aimCount <= 0)
+        {
+            aimCount = 1;
+        }
+        
         progressBar.transform.localScale = new Vector3(0, progressBar.transform.localScale.y, progressBar.transform.localScale.z);
         progressText.text = $"0/{aimCount}";
     }

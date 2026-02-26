@@ -6,6 +6,7 @@ using MessagePack;
 using System;
 
 [MessagePackObject(false)]
+[Serializable]
 public class WordSlotInfo {
     [Key(0)]
     public List<string> Infos;

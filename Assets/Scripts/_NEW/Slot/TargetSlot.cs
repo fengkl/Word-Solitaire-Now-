@@ -39,7 +39,7 @@ public class TargetSlot : Slot_New
                     categoryCard.canSelected = false;
                 });
         }
-        else
+        else if (cards.Count > 1)
         {
             foreach (var card in cards)
             {
@@ -68,6 +68,7 @@ public class TargetSlot : Slot_New
                 categoryCard.countText.enabled = false;
                 categoryCard.MovingCardPos();
                 categoryCard.MovingCardTextToSmall();
+                categoryCard.transform.SetAsFirstSibling();
 
                 // 处理牌组完成时的打包
                 if (cards.Count == categoryCard.cardCount + 1)
@@ -213,4 +214,46 @@ public class TargetSlot : Slot_New
     }
     
     # endregion
+
+    public override void LoadGame(List<string> cardNames)
+    {
+        // 根据保存的卡牌顺序添加卡牌
+        for (int i = cardNames.Count - 1; i >= 0; i--)
+        {
+            string cardName = cardNames[i];
+            if (GameDataUtils.Instance.cardActors.ContainsKey(cardName))
+            {
+                CardActor card = GameDataUtils.Instance.cardActors[cardName];
+                card.currentSlot = this; // 设置当前所在的卡槽
+                cards.Push(card); // 入栈
+            }
+        }
+        
+        
+        if (cards.Count - 1 != categoryCard.cardCount)
+        {
+            if (cards.Count > 1)
+            {
+                categoryCard.MovingCardTextToSmall(0);
+                CreateProgressPoints(); // 创建进度点
+                categoryCard.transform.SetAsFirstSibling();
+                categoryCard.countText.enabled = false;
+                LightUpProgressPoint(); // 点亮进度点
+            }
+        
+            foreach (var card in cards)
+            {
+                if (card.cardType == CardType.Category && card.isTextScale) continue;
+            
+                card.transform.SetAsLastSibling();
+                card.MovingCardTextToBig();
+            }
+        
+        }
+        else
+        {
+            categoryCard.countText.enabled = false;
+            categoryCard.transform.SetAsLastSibling();
+        }
+    }
 }

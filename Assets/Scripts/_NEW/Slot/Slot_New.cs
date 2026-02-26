@@ -139,4 +139,26 @@ public class Slot_New : MonoBehaviour
     /// 更新keyPos和slotHeight
     /// </summary>
     public virtual void UpdateKeyPosAndHeight() { }
+
+
+    public virtual void LoadGame(List<string> cardNames)
+    {
+        // 根据保存的卡牌顺序添加卡牌
+        for (int i = cardNames.Count - 1; i >= 0; i--)
+        {
+            string cardName = cardNames[i];
+            if (GameDataUtils.Instance.cardActors.ContainsKey(cardName))
+            {
+                CardActor card = GameDataUtils.Instance.cardActors[cardName];
+                card.currentSlot = this; // 设置当前所在的卡槽
+                card.transform.SetAsLastSibling();
+                // 如果当前卡牌不是【盖着】【不是栈顶卡牌】且【文字未缩放过】
+                if (!card.isFaceDown && i != 0 && !card.isTextScale)
+                {
+                    card.MovingCardTextToSmall();
+                }
+                cards.Push(card); // 入栈
+            }
+        }
+    }
 }

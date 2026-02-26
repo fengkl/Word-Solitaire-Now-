@@ -8,7 +8,6 @@ public class GameStateManager : MonoBehaviour
     public static GameStateManager Instance { get; private set; }
     
     private const string SAVE_KEY = "CurrentGameState";
-    private const int MAX_SAVE_SLOTS = 3; // 最多保存3个残局
 
     private void Awake()
     {
@@ -78,7 +77,8 @@ public class GameStateManager : MonoBehaviour
             {
                 slotId = slot.slotId.ToString(),
                 slotType = slot.slotType,
-                position = slot.transform.position
+                position = slot.transform.position,
+                categoryCardName = (slot as TargetSlot)?.categoryCard?.cardName ?? ""
             };
             
             // 记录卡牌顺序
@@ -89,6 +89,31 @@ public class GameStateManager : MonoBehaviour
             
             gameState.slotStates.Add(slotState);
         }
+
+        // 单独保存翻牌卡槽状态
+        HomeSlot homeSlot = GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot;
+        HomeSlotState homeSlotState = new HomeSlotState
+        {
+            countText = homeSlot.cards.Count
+        };
+        
+        foreach (var card in homeSlot.cards)
+        {
+            homeSlotState.cardNames.Add(card.cardName);
+        }
+        
+        gameState.homeSlotState = homeSlotState;
+        
+        // 保存计数器状态
+        
+
+        // 保存当前关卡数据
+        gameState.modeLevelData = new ModeLevelData
+        {
+            currentEasyLevelId = LevelData.levelIdDict[LevelMode.Easy],
+            currentMediumLevelId = LevelData.levelIdDict[LevelMode.Normal],
+            currentHardLevelId = LevelData.levelIdDict[LevelMode.Hard]
+        };
 
         return gameState;
     }
@@ -117,9 +142,28 @@ public class GameStateManager : MonoBehaviour
         GameDataUtils.Instance.levelData = gameState.levelData;
         GameDataUtils.Instance.mode = gameState.gameMode;
         GameDataUtils.Instance.levelId = gameState.levelId;
+        
+        // 恢复游戏数据
+        RestoreGameData(gameState);
+        
+        print(gameState.modeLevelData.currentEasyLevelId);
+        
+        // 加载关卡数据
+        GameDataUtils.Instance.LoadLevel(gameState.gameMode, gameState.randomSeed);
 
         Debug.Log($"残局加载成功 - 模式:{gameState.gameMode}, 关卡:{gameState.levelId}");
         return gameState;
+    }
+    
+    /// <summary>
+    /// 恢复游戏数据
+    /// </summary>
+    public void RestoreGameData(GameState gameState)
+    {
+        // 恢复关卡进度
+        LevelData.levelIdDict[LevelMode.Easy] = gameState.modeLevelData.currentEasyLevelId;
+        LevelData.levelIdDict[LevelMode.Normal] = gameState.modeLevelData.currentMediumLevelId;
+        LevelData.levelIdDict[LevelMode.Hard] = gameState.modeLevelData.currentHardLevelId;
     }
     
     /// <summary>
@@ -138,27 +182,42 @@ public class GameStateManager : MonoBehaviour
                 CardActor card = GameDataUtils.Instance.cardActors[cardState.cardName];
 
                 // 恢复卡牌属性
-                card.isFaceDown = cardState.isFaceDown;
                 card.transform.position = cardState.position;
                 card.transform.localScale = cardState.scale;
-            
-                card.FlipCard(0);
                 card.canSelected = cardState.canSelected;
+                card.currentSlot = FindSlotById(cardState.currentSlotId);
+                
+                if (!cardState.isFaceDown)
+                {
+                    card.FlipCard(0);
+                }
             }
         }
 
         // 恢复槽位状态
         RebuildSlotStates(gameState.slotStates);
-
-        if (GameDataUtils.Instance.solitaireScene.topGroup.gameTimer != null)
+        
+        // 恢复翻牌卡槽的卡牌数量
+        GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot.countText.text = gameState.homeSlotState.countText.ToString();
+        // 根据保存的卡牌顺序添加卡牌
+        for (int i = gameState.homeSlotState.cardNames.Count - 1; i >= 0; i--)
         {
-            GameDataUtils.Instance.solitaireScene.topGroup.gameTimer.time = gameState.gameTime;
+            string cardName = gameState.homeSlotState.cardNames[i];
+            if (GameDataUtils.Instance.cardActors.ContainsKey(cardName))
+            {
+                CardActor card = GameDataUtils.Instance.cardActors[cardName];
+                GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot.AddCard(card);
+            }
         }
 
+        // 恢复游戏数据
+        GameDataUtils.Instance.solitaireScene.topGroup.gameTimer.time = gameState.gameTime;
+        GameDataUtils.Instance.aimCount = gameState.aimCount;
+        GameDataUtils.Instance.completeCount = gameState.completeCount;
+        GameDataUtils.Instance.solitaireScene.topGroup.gameProgressBar.SetProgress(gameState.completeCount, gameState.aimCount);
+        
         // 恢复完成进度计数
         GameDataUtils.Instance.completeCount = gameState.completeCount;
-
-        print("残局恢复完成");
     }
     
     private void RebuildSlotStates(List<SlotState> slotStates)
@@ -174,23 +233,22 @@ public class GameStateManager : MonoBehaviour
         {
             Slot_New targetSlot = FindSlotById(slotState.slotId);
             if (targetSlot == null) continue;
-            
-            // 根据保存的卡牌顺序添加卡牌
-            for (int i = slotState.cardNames.Count - 1; i >= 0; i--)
+
+            // 恢复目标卡槽的分类卡
+            if (targetSlot.slotType == SlotType.TargetSlot)
             {
-                string cardName = slotState.cardNames[i];
-                if (GameDataUtils.Instance.cardActors.ContainsKey(cardName))
+                if (slotState.categoryCardName != "")
                 {
-                    CardActor card = GameDataUtils.Instance.cardActors[cardName];
-                    targetSlot.AddCard(card);
+                    CardActor card = GameDataUtils.Instance.cardActors[slotState.categoryCardName];
+                    (targetSlot as TargetSlot).categoryCard = (CategoryCardActor)card;
                 }
             }
-        }
-
-        // 更新卡槽中卡牌的位置
-        foreach (var slot in GameDataUtils.Instance.GetAllSlots())
-        {
-            slot.UpdateCardsPos();
+            
+            // 根据保存的卡牌顺序添加卡牌
+            if (slotState.cardNames.Count > 0)
+            {
+                targetSlot.LoadGame(slotState.cardNames);
+            }
         }
     }
     
@@ -224,7 +282,7 @@ public class GameStateManager : MonoBehaviour
     /// </summary>
     private void OnApplicationQuit()
     {
-        if (GameDataUtils.Instance.levelId != 0)
+        if (GameDataUtils.Instance.isGaming)
         {
             SaveCurrentGameState();
         }

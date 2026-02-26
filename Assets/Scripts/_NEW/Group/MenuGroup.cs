@@ -23,6 +23,9 @@ public class MenuGroup : MonoBehaviour
         UpdateText();
     }
 
+    /// <summary>
+    /// 更新文本
+    /// </summary>
     public void UpdateText()
     {
         easyLevelText.text = "Level " + LevelData.levelIdDict[LevelMode.Easy];
@@ -31,21 +34,21 @@ public class MenuGroup : MonoBehaviour
         continueGameLevelText.text = GameDataUtils.Instance.mode + "  Level " + GameDataUtils.Instance.levelId;
     }
 
+    /// <summary>
+    /// 设置继续游戏的按钮的显示
+    /// </summary>
     public void SetContinueButton()
     {
+        UpdateText();
+        
         // 检查是否有保存的残局
         if (GameStateManager.Instance.HasSaveGameState())
         {
-            GameDataUtils.Instance.savedState = GameStateManager.Instance.LoadSavedGameState();
-        }
-        
-        if (GameDataUtils.Instance.levelId == 0)
-        {
-            continueButton.SetActive(false);
+            continueButton.SetActive(true);
         }
         else
         {
-            continueButton.SetActive(true);
+            continueButton.SetActive(false);
         }
     }
 
@@ -88,6 +91,7 @@ public class MenuGroup : MonoBehaviour
     /// </summary>
     private void StartNewGame()
     {
+        GameDataUtils.Instance.isGaming = true;
         GameDataUtils.Instance.solitaireScene.resultGroup.gameObject.SetActive(false);
         
         // 创建动画序列
@@ -108,7 +112,9 @@ public class MenuGroup : MonoBehaviour
     /// </summary>
     public void ContinueGame()
     {
-        GameDataUtils.Instance.solitaireScene.LoadGame();
+        GameDataUtils.Instance.isGaming = true;
+        GameDataUtils.Instance.savedState = GameStateManager.Instance.LoadSavedGameState();
+        GameDataUtils.Instance.solitaireScene.LoadGame(GameDataUtils.Instance.savedState);
         
         // 创建动画序列
         Sequence sequence = DOTween.Sequence();
@@ -121,5 +127,16 @@ public class MenuGroup : MonoBehaviour
         {
             GameDataUtils.Instance.solitaireScene.SetAllGameGroupActive(true);
         });
+    }
+
+    /// <summary>
+    /// 清除存档
+    /// </summary>
+    public void ClearSaveData()
+    {
+        GameStateManager.Instance.ClearSavedGameState();
+        LevelData.ResetLevelData();
+        SetContinueButton();
+        UpdateText();
     }
 }

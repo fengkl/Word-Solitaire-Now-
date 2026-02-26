@@ -6,6 +6,7 @@ using System;
 using System.Text;
 
 [MessagePackObject(false)]
+[Serializable]
 public class WordKVPInfo {
     [Key(0)]
     public string Category;

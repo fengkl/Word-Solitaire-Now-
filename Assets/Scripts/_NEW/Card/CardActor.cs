@@ -20,6 +20,8 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public Image cardFace; // 卡面
     public Image cardBorder; // 卡边
     public Text nameText; // 名称文本
+    public bool useSprite; // 是否使用精灵
+    public Image cardImage; // 卡牌精灵
     
     [Header("点击缩放参数")] 
     public float originScale; // 原始大小
@@ -252,6 +254,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 moveSequence = slot.AddCard(dragMove.cards); // 将卡牌添加到目标卡槽
                 moveSequence.OnComplete(() => 
                 {
+                    GameStateManager.Instance.SaveCurrentGameState();
                     dragMove.MoveToCardGroup();
                 });
                 
@@ -276,6 +279,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             
             moveSequence.OnComplete(() => 
             {
+                GameStateManager.Instance.SaveCurrentGameState();
                 dragMove.MoveToCardGroup();
             });
         }
