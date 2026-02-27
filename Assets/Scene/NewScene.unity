@@ -1326,6 +1326,7 @@ MonoBehaviour:
   cardInfos: []
   slotId: 9
   slotType: 3
+  canPut: 0
   keyPos: {x: 0, y: 0, z: 0}
   slotWidth: 0
   slotHeight: 0
@@ -3408,6 +3409,7 @@ MonoBehaviour:
   cardInfos: []
   slotId: 8
   slotType: 3
+  canPut: 0
   keyPos: {x: 0, y: 0, z: 0}
   slotWidth: 0
   slotHeight: 0
@@ -5881,7 +5883,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -212, y: -590}
+  m_AnchoredPosition: {x: -217, y: -590}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2009108668
@@ -5896,7 +5898,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a0a1bbdad881f85448df1b6ce79eca3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  originPos: {x: 0, y: 0, z: 0}
+  counterText: {fileID: 0}
+  originPos: {x: 0, y: 0}
 --- !u!1 &2068732481
 GameObject:
   m_ObjectHideFlags: 0
