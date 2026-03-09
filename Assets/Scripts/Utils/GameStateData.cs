@@ -6,8 +6,7 @@ using UnityEngine;
 /// 游戏状态
 /// </summary>
 [System.Serializable]
-public class GameState
-{
+public class GameState {
     // 游戏基本状态
     public GameplayLevelData levelData; // 关卡数据
     public LevelMode gameMode; // 难度
@@ -16,7 +15,8 @@ public class GameState
     public float gameTime; // 游戏时间
     public int completeCount; // 已完成牌组数量
     public int aimCount; // 目标牌组数量
-    
+    public int moveCount;
+
     // 卡牌状态列表
     public List<CardState> cardStates = new List<CardState>();
     // 槽位状态
@@ -31,8 +31,7 @@ public class GameState
 /// 卡牌状态
 /// </summary>
 [System.Serializable]
-public class CardState
-{
+public class CardState {
     public string cardName; // 卡牌名称
     public string cardCategory; // 卡牌分类
     public CardType cardType; // 卡牌类型
@@ -47,8 +46,7 @@ public class CardState
 /// 槽位状态
 /// </summary>
 [System.Serializable]
-public class SlotState
-{
+public class SlotState {
     public string slotId; // 卡槽ID
     public SlotType slotType; // 卡槽类型
     public string categoryCardName;  // 当前卡槽的所装的分类卡的名称
@@ -60,8 +58,7 @@ public class SlotState
 /// 翻牌卡槽状态
 /// </summary>
 [System.Serializable]
-public class HomeSlotState
-{
+public class HomeSlotState {
     public List<string> cardNames = new List<string>(); // 卡槽内卡牌名称列表
     public int countText; // 卡牌数量
     public Vector2 counterPosition; // 位置
@@ -71,8 +68,7 @@ public class HomeSlotState
 /// 关卡进度数据
 /// </summary>
 [System.Serializable]
-public class ModeLevelData
-{
+public class ModeLevelData {
     public int currentEasyLevelId = 1; // 当前简单关卡id
     public int currentMediumLevelId = 1; // 当前普通关卡id
     public int currentHardLevelId = 1; // 当前困难关卡id
