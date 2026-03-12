@@ -41,6 +41,7 @@ public class GameStateManager : MonoBehaviour {
             gameTime = GameDataUtils.Instance.solitaireScene.topGroup.gameTimer.time,
             completeCount = GameDataUtils.Instance.completeCount,
             aimCount = GameDataUtils.Instance.aimCount,
+            leftMoveCount = GameDataUtils.Instance.leftMoveCount,
             moveCount = GameDataUtils.Instance.moveCount
         };
 
@@ -79,7 +80,8 @@ public class GameStateManager : MonoBehaviour {
         // 单独保存翻牌卡槽状态
         HomeSlot homeSlot = GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot;
         HomeSlotState homeSlotState = new HomeSlotState {
-            countText = homeSlot.cards.Count
+            countText = homeSlot.cards.Count,
+            isShowCountText = homeSlot.counter.activeSelf
         };
 
         foreach (var card in homeSlot.cards)
@@ -123,7 +125,7 @@ public class GameStateManager : MonoBehaviour {
         GameDataUtils.Instance.moveCount = gameState.moveCount;
 
         // 加载关卡数据
-        GameDataUtils.Instance.LoadLevel(gameState.gameMode, gameState.randomSeed);
+        GameDataUtils.Instance.LoadLevel(gameState.gameMode, gameState.randomSeed, true);
 
         Debug.Log($"残局加载成功 - 模式:{gameState.gameMode}, 关卡:{gameState.levelId}");
         return gameState;
@@ -149,16 +151,18 @@ public class GameStateManager : MonoBehaviour {
                 card.currentSlot = FindSlotById(cardState.currentSlotId);
 
                 if (!cardState.isFaceDown)
-                    card.FlipCard(0);
+                    card.FlipCard(false);
             }
         }
 
         // 恢复槽位状态
         RebuildSlotStates(gameState.slotStates);
 
-        // 恢复翻牌卡槽的卡牌数量和计数器位置
+        // 恢复翻牌卡槽的计数器位置
         GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot.countText.text = gameState.homeSlotState.countText.ToString();
-        // 根据保存的卡牌顺序添加卡牌
+        GameDataUtils.Instance.solitaireScene.takeGroup.homeSlot.counter.SetActive(gameState.homeSlotState.isShowCountText);
+        
+        // 根据保存的卡牌顺序向翻牌卡槽添加卡牌
         for (int i = gameState.homeSlotState.cardNames.Count - 1; i >= 0; i--) {
             string cardName = gameState.homeSlotState.cardNames[i];
             if (GameDataUtils.Instance.cardActors.ContainsKey(cardName)) {
@@ -171,7 +175,9 @@ public class GameStateManager : MonoBehaviour {
         GameDataUtils.Instance.solitaireScene.topGroup.gameTimer.time = gameState.gameTime;
         GameDataUtils.Instance.aimCount = gameState.aimCount;
         GameDataUtils.Instance.completeCount = gameState.completeCount;
-        GameDataUtils.Instance.solitaireScene.topGroup.gameProgressBar.SetProgress(gameState.completeCount, gameState.aimCount);
+        GameDataUtils.Instance.solitaireScene.topGroup.gameProgressBar.SetProgress(gameState.completeCount, gameState.aimCount, false);
+        GameDataUtils.Instance.solitaireScene.topGroup.dailyTarget.SetTarget(gameState.completeCount, gameState.aimCount);
+        GameDataUtils.Instance.solitaireScene.topGroup.dailyMoves.InitMovesText(gameState.leftMoveCount);
 
         // 恢复完成进度计数
         GameDataUtils.Instance.completeCount = gameState.completeCount;

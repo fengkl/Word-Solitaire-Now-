@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 /// <summary>
 /// 游戏数据工具类，用于管理游戏中的各种数据和组件
@@ -24,6 +26,7 @@ public class GameDataUtils {
     public int levelId = 0;
     public int aimCount; // 目标数量
     public int completeCount; // 完成数量
+    public int leftMoveCount; // 剩余步数
     public int moveCount;
 
     public bool isGaming; // 是否在游戏中
@@ -84,8 +87,15 @@ public class GameDataUtils {
     /// <summary>
     /// 加载关卡
     /// </summary>
-    public void LoadLevel(LevelMode mode, int randomSeed = -1) {
-        levelId = LevelData.levelIdDict[mode];
+    public void LoadLevel(LevelMode mode, int randomSeed = -1, bool loadGame = false) {
+        if (!loadGame)
+        {
+            if (mode == LevelMode.Daily)
+                levelId = solitaireScene.calenderGroup.GetSelectDayLevelID();
+            else
+                levelId = LevelData.levelIdDict[mode];
+        }
+        
         this.mode = mode;
         randomSeed = randomSeed == -1 ? Random.Range(0, 9999) : randomSeed; // 随机种子
 

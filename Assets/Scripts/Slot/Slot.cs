@@ -40,7 +40,7 @@ public class Slot : MonoBehaviour {
     }
 
     /// <summary>
-    /// 发牌时添加卡牌
+    /// 发牌时添加卡牌(一张一张添加)
     /// </summary>
     public void AddCard(CardActor card) {
         card.currentSlot = this; // 设置当前所在的卡槽
@@ -49,13 +49,14 @@ public class Slot : MonoBehaviour {
     }
 
     /// <summary>
-    /// 拖动时添加卡牌
+    /// 拖动时添加卡牌(添加一组卡牌)
     /// </summary>
     public Sequence AddCard(Stack<CardActor> cards) {
         foreach (var card in cards) {
             card.currentSlot = this; // 设置当前所在的卡槽
             this.cards.Push(card); // 入栈
         }
+        
         return UpdateCardsPos(); // 更新卡牌位置
     }
 
@@ -139,7 +140,7 @@ public class Slot : MonoBehaviour {
                 card.transform.SetAsLastSibling();
                 // 如果当前卡牌不是【盖着】【不是栈顶卡牌】且【文字未缩放过】
                 if (!card.isFaceDown && i != 0 && !card.isTextScale)
-                    card.MovingCardTextToSmall();
+                    card.MovingCardTextToSmall(false);
                 cards.Push(card); // 入栈
             }
         }

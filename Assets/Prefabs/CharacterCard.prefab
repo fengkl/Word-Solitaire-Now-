@@ -399,6 +399,7 @@ MonoBehaviour:
   cardCategory: 
   cardName: 
   currentSlot: {fileID: 0}
+  targetPos: {x: 0, y: 0, z: 0}
   cardFront: {fileID: 3623812722174346794}
   cardBack: {fileID: 4443044826260189588}
   cardFace: {fileID: 251210380010800055}

@@ -477,14 +477,18 @@ MonoBehaviour:
   cardCategory: 
   cardName: 
   currentSlot: {fileID: 0}
+  targetPos: {x: 0, y: 0, z: 0}
   cardFront: {fileID: 3754395702582573376}
   cardBack: {fileID: 4118358437786686317}
   cardFace: {fileID: 1855652639447729759}
   cardBorder: {fileID: 2681988181870887623}
   nameText: {fileID: 1815000461334024213}
+  useSprite: 0
+  cardImage: {fileID: 0}
   originScale: 1
   duration: 0.05
   textScaleValue: 0.6
+  spriteScaleValue: 0
   textMoveDistance: 105
   cardMoveDistance: 50
   originalScaleValue: 1
@@ -495,6 +499,8 @@ MonoBehaviour:
   isMoving: 0
   canSelected: 0
   offset: {x: 0, y: 0, z: 0}
+  redPoint: {fileID: 0}
+  redCountText: {fileID: 0}
   textBg: {fileID: 6131180767703197762}
   countText: {fileID: 627090237748315459}
   cardCount: 0

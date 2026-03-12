@@ -58,92 +58,147 @@ public class WordSotaLevelGenerator {
                 }
             }
         }
-
+        
         // 5. 随机打乱列表（保证种子可复现）
-        List<string> randomWordList = GetRandomList(wordSet.ToList(), randomSeed);
-        List<string> randomCategoryList = GetRandomList(categorySet.ToList(), randomSeed);
-
+        List<string> mixedList = new List<string>();
+        mixedList.AddRange(wordSet); // 加入所有单词
+        mixedList.AddRange(categorySet); // 加入所有分类
+        
+        // 根据种子打乱混合列表
+        List<string> randomMixedList = GetRandomList(mixedList, randomSeed);
+        
+        int totalIdx = 0;
+        
         // 6. 生成目标槽（TargetSlots）
         levelData.TargetSlots = new List<WordSlotInfo>();
         int filledTargetSlots = 0;
-        // 单槽最大单词数：最多3个（匹配反编译逻辑）
-        int maxWordPerTargetSlot = categorySet.Count >= 3 ? 3 : categorySet.Count;
-
-        // 索引变量（提升作用域，避免编译错误）
-        int wordIdx = 0;
-        int cateIdx = 0;
-
+        
         while (filledTargetSlots < data.TargetSlotCnt) {
             WordSlotInfo targetSlot = new WordSlotInfo();
             targetSlot.Infos = new List<string>();
-
-            // 随机生成当前目标槽的单词数量（1 ~ maxWordPerTargetSlot）
-            int wordCount = random.Next(1, maxWordPerTargetSlot + 1);
-
-            for (int i = 0; i < wordCount; i++) {
-                // 85%概率取单词，15%概率取分类名（反编译核心逻辑）
-                double randomRate = random.NextDouble();
-                if (randomRate < 0.85) {
-                    if (wordIdx < randomWordList.Count) {
-                        targetSlot.Infos.Add(randomWordList[wordIdx]);
-                        wordIdx++;
-                    } else {
-                        targetSlot.Infos.Add(randomCategoryList[cateIdx]);
-                        cateIdx++;
-                    }
-                } else {
-                    if (cateIdx < randomCategoryList.Count) {
-                        targetSlot.Infos.Add(randomCategoryList[cateIdx]);
-                        cateIdx++;
-                    } else {
-                        targetSlot.Infos.Add(randomWordList[wordIdx]);
-                        wordIdx++;
-                    }
-                }
-            }
-
+        
             levelData.TargetSlots.Add(targetSlot);
             filledTargetSlots++;
         }
-
+        
         // 7. 生成操作槽（OperateSlots）：匹配OperateSlotSizes尺寸
         levelData.OperateSlots = new List<WordSlotInfo>();
         for (int i = 0; i < data.OperateSlotSizes.Count; i++) {
             WordSlotInfo operateSlot = new WordSlotInfo();
             operateSlot.Infos = new List<string>();
-
+        
             // 按OperateSlotSizes指定的尺寸填充单词/分类名
             int slotSize = data.OperateSlotSizes[i];
             for (int j = 0; j < slotSize; j++) {
-                if (wordIdx < randomWordList.Count) {
-                    operateSlot.Infos.Add(randomWordList[wordIdx]);
-                    wordIdx++;
-                } else if (cateIdx < randomCategoryList.Count) {
-                    operateSlot.Infos.Add(randomCategoryList[cateIdx]);
-                    cateIdx++;
+                if (totalIdx < randomMixedList.Count) {
+                    operateSlot.Infos.Add(randomMixedList[totalIdx]);
+                    totalIdx++;
                 } else {
                     break; // 无数据时停止填充
                 }
             }
-
+        
             levelData.OperateSlots.Add(operateSlot);
         }
-
+        
         // 8. 填充主场槽（HomeSlot）：剩余未使用的单词/分类名
         levelData.HomeSlot = new WordSlotInfo();
         levelData.HomeSlot.Infos = new List<string>();
-
+        
         // 填充剩余单词
-        while (wordIdx < randomWordList.Count) {
-            levelData.HomeSlot.Infos.Add(randomWordList[wordIdx]);
-            wordIdx++;
+        while (totalIdx < randomMixedList.Count) {
+            levelData.HomeSlot.Infos.Add(randomMixedList[totalIdx]);
+            totalIdx++;
         }
-
-        // 填充剩余分类名
-        while (cateIdx < randomCategoryList.Count) {
-            levelData.HomeSlot.Infos.Add(randomCategoryList[cateIdx]);
-            cateIdx++;
-        }
+        
+        
+        // // 5. 随机打乱列表（保证种子可复现）
+        // List<string> randomWordList = GetRandomList(wordSet.ToList(), randomSeed);
+        // List<string> randomCategoryList = GetRandomList(categorySet.ToList(), randomSeed);
+        //
+        // // 6. 生成目标槽（TargetSlots）
+        // levelData.TargetSlots = new List<WordSlotInfo>();
+        // int filledTargetSlots = 0;
+        // // 单槽最大单词数：最多3个（匹配反编译逻辑）
+        // // int maxWordPerTargetSlot = categorySet.Count >= 3 ? 3 : categorySet.Count;
+        // int maxWordPerTargetSlot = 0;
+        //
+        // // 索引变量（提升作用域，避免编译错误）
+        // int wordIdx = 0;
+        // int cateIdx = 0;
+        //
+        // while (filledTargetSlots < data.TargetSlotCnt) {
+        //     WordSlotInfo targetSlot = new WordSlotInfo();
+        //     targetSlot.Infos = new List<string>();
+        //
+        //     // 随机生成当前目标槽的单词数量（1 ~ maxWordPerTargetSlot）
+        //     // int wordCount = random.Next(1, maxWordPerTargetSlot + 1);
+        //     int wordCount = 0;
+        //     
+        //     for (int i = 0; i < wordCount; i++) {
+        //         // 85%概率取单词，15%概率取分类名（反编译核心逻辑）
+        //         double randomRate = random.NextDouble();
+        //         if (randomRate < 0.85) {
+        //             if (wordIdx < randomWordList.Count) {
+        //                 targetSlot.Infos.Add(randomWordList[wordIdx]);
+        //                 wordIdx++;
+        //             } else {
+        //                 targetSlot.Infos.Add(randomCategoryList[cateIdx]);
+        //                 cateIdx++;
+        //             }
+        //         } else {
+        //             if (cateIdx < randomCategoryList.Count) {
+        //                 targetSlot.Infos.Add(randomCategoryList[cateIdx]);
+        //                 cateIdx++;
+        //             } else {
+        //                 targetSlot.Infos.Add(randomWordList[wordIdx]);
+        //                 wordIdx++;
+        //             }
+        //         }
+        //     }
+        //
+        //     levelData.TargetSlots.Add(targetSlot);
+        //     filledTargetSlots++;
+        // }
+        //
+        // // 7. 生成操作槽（OperateSlots）：匹配OperateSlotSizes尺寸
+        // levelData.OperateSlots = new List<WordSlotInfo>();
+        // for (int i = 0; i < data.OperateSlotSizes.Count; i++) {
+        //     WordSlotInfo operateSlot = new WordSlotInfo();
+        //     operateSlot.Infos = new List<string>();
+        //
+        //     // 按OperateSlotSizes指定的尺寸填充单词/分类名
+        //     int slotSize = data.OperateSlotSizes[i];
+        //     for (int j = 0; j < slotSize; j++) {
+        //         if (wordIdx < randomWordList.Count) {
+        //             operateSlot.Infos.Add(randomWordList[wordIdx]);
+        //             wordIdx++;
+        //         } else if (cateIdx < randomCategoryList.Count) {
+        //             operateSlot.Infos.Add(randomCategoryList[cateIdx]);
+        //             cateIdx++;
+        //         } else {
+        //             break; // 无数据时停止填充
+        //         }
+        //     }
+        //
+        //     levelData.OperateSlots.Add(operateSlot);
+        // }
+        //
+        // // 8. 填充主场槽（HomeSlot）：剩余未使用的单词/分类名
+        // levelData.HomeSlot = new WordSlotInfo();
+        // levelData.HomeSlot.Infos = new List<string>();
+        //
+        // // 填充剩余单词
+        // while (wordIdx < randomWordList.Count) {
+        //     levelData.HomeSlot.Infos.Add(randomWordList[wordIdx]);
+        //     wordIdx++;
+        // }
+        //
+        // // 填充剩余分类名
+        // while (cateIdx < randomCategoryList.Count) {
+        //     levelData.HomeSlot.Infos.Add(randomCategoryList[cateIdx]);
+        //     cateIdx++;
+        // }
 
         return levelData;
     }

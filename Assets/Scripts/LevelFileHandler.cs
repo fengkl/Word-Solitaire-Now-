@@ -31,7 +31,7 @@ public class LevelFileHandler {
             // 用来生成字典的 Key
             string key = this.GetLevelKey(data.Mode, data.LevelID);
 
-            //Debug.Log(data);
+            // Debug.Log(data);
 
 
             // 存入字典: levelDataDict[key] = data;
@@ -93,7 +93,7 @@ public class LevelFileHandler {
                 // levelData.Field8 应该是 Level ID
                 string key = this.GetLevelKey(mode, levelData.LevelID);
 
-                //Debug.Log(key + " " + levelData);
+                // Debug.Log(key + " " + levelData);
                 // 2. 存入主字典
                 this.mLevels[key] = levelData;
 

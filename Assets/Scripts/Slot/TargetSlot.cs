@@ -138,8 +138,6 @@ public class TargetSlot : Slot {
 
         // 如果是最后一组，则禁用场景响应
         if (GameDataUtils.Instance.completeCount + 1 == GameDataUtils.Instance.aimCount) {
-            print(GameDataUtils.Instance.completeCount + 1);
-            print(GameDataUtils.Instance.aimCount);
             GameDataUtils.Instance.solitaireScene.DisableScene();
         }
 
@@ -162,9 +160,10 @@ public class TargetSlot : Slot {
             // 完成计数+1
             GameDataUtils.Instance.completeCount++;
             GameDataUtils.Instance.solitaireScene.topGroup.gameProgressBar.SetProgress(GameDataUtils.Instance.completeCount, GameDataUtils.Instance.aimCount);
+            GameDataUtils.Instance.solitaireScene.topGroup.dailyTarget.SetTarget(GameDataUtils.Instance.completeCount, GameDataUtils.Instance.aimCount);
 
             // 重置卡槽
-            if (GameDataUtils.Instance.aimCount - GameDataUtils.Instance.completeCount >= 4)
+            if (GameDataUtils.Instance.aimCount - GameDataUtils.Instance.completeCount >= GameDataUtils.Instance.targetSlots.Count)
                 ReSet();
 
             // 判断是否完成游戏
@@ -211,7 +210,7 @@ public class TargetSlot : Slot {
 
         if (cards.Count - 1 != categoryCard.cardCount) {
             if (cards.Count > 1) {
-                categoryCard.MovingCardTextToSmall(0);
+                categoryCard.MovingCardTextToSmall(false);
                 CreateProgressPoints(); // 创建进度点
                 categoryCard.transform.SetAsFirstSibling();
                 categoryCard.countText.enabled = false;

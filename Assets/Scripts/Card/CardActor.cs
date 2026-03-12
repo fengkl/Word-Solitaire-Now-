@@ -13,6 +13,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public string cardName; // 卡牌名称
     public Slot currentSlot; // 当前所在槽位
     public Move dragMove; // 暂存拖拽移动的数据
+    public Vector3 targetPos; // 暂存的目标位置
 
     [Header("卡牌图片和文字")]
     public GameObject cardFront; // 卡牌正面物体集合
@@ -164,9 +165,9 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         foreach (var slot in allSlots) {
             if (slot == currentSlot) continue;
 
-            // 如果根据宽高检测到了可用卡槽，且【卡槽可以放置卡牌】且【卡槽中有牌 且 第一张牌的类型与自身类型相同 且 第一张牌不为分类卡】或【卡槽为空】
+            // 如果根据宽高检测到了可用卡槽，且【卡槽可以放置卡牌】且【卡槽不为空 且 第一张牌的类型与自身类型相同 且 第一张牌不为分类卡】或【卡槽为空】
             if (Math.Abs(dragMove.keyPos.x - slot.keyPos.x) < slot.slotWidth &&
-                    Math.Abs(dragMove.keyPos.y - slot.keyPos.y) < slot.slotHeight &&
+                    Math.Abs(dragMove.keyPos.y - slot.keyPos.y) < slot.slotHeight / 2f + 140 &&
                     slot.canPut &&
                     ((slot.cards.Count != 0 && dragMove.category == slot.cards.Peek().cardCategory) || slot.cards.Count == 0)) {
                 // 如果OperateSlot顶部第一张卡是分类卡，则跳过
@@ -177,6 +178,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
                 // 启用边缘高亮
                 slot.EnableHighLight();
+                
                 break;
             }
         }
@@ -222,6 +224,10 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
                 });
 
                 slot.DisableHighLight(); // 禁用边缘高亮
+        
+                // 更新剩余步数计数器
+                GameDataUtils.Instance.solitaireScene.topGroup.dailyMoves.UpdateMovesText();
+                
                 break;
             }
         }
@@ -311,7 +317,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// <summary>
     /// 移动牌面图片或文字并变小
     /// </summary>
-    public void MovingCardTextToSmall(int customDuration = -1) {
+    public void MovingCardTextToSmall(bool anim = true) {
         if (isTextScale) return;
 
         isTextScale = true;
@@ -324,11 +330,11 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
         // 缩放和移动图片或文字
         if (useSprite) {
-            sequence.Join(cardImage.transform.DOScale(spriteScaleValue, customDuration != -1 ? customDuration : moveDuration));
-            sequence.Join(cardImage.transform.DOBlendableLocalMoveBy(new Vector3(0, textMoveDistance, 0), customDuration != -1 ? customDuration : moveDuration));
+            sequence.Join(cardImage.transform.DOScale(spriteScaleValue, anim ? moveDuration : 0));
+            sequence.Join(cardImage.transform.DOBlendableLocalMoveBy(new Vector3(0, textMoveDistance, 0), anim ? moveDuration : 0));
         } else {
-            sequence.Join(nameText.transform.DOScale(textScaleValue, customDuration != -1 ? customDuration : moveDuration));
-            sequence.Join(nameText.transform.DOBlendableLocalMoveBy(new Vector3(0, textMoveDistance, 0), customDuration != -1 ? customDuration : moveDuration));
+            sequence.Join(nameText.transform.DOScale(textScaleValue, anim ? moveDuration : 0));
+            sequence.Join(nameText.transform.DOBlendableLocalMoveBy(new Vector3(0, textMoveDistance, 0), anim ? moveDuration : 0));
         }
     }
 
@@ -359,8 +365,8 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// <summary>
     /// 移动牌位置
     /// </summary>
-    public void MovingCardPos(int customDuration = -1) {
-        transform.DOMoveY(currentSlot.transform.position.y + cardMoveDistance, customDuration != -1 ? customDuration : moveDuration);
+    public void MovingCardPos(bool anim = true) {
+        transform.DOMoveY(currentSlot.transform.position.y + cardMoveDistance, anim ? moveDuration : 0);
     }
 
     #endregion
@@ -370,7 +376,7 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// <summary>
     /// 翻转卡牌（翻至正面朝上）
     /// </summary>
-    public void FlipCard(int customDuration = -1) {
+    public void FlipCard(bool anim = true) {
         if (!isFaceDown) return;
 
         isFaceDown = false;
@@ -378,10 +384,10 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         // 创建序列动画
         Sequence sequence = DOTween.Sequence();
 
-        sequence.Append(cardBack.transform.DOScaleX(0, customDuration != -1 ? customDuration : flipDuration));
-        sequence.Append(cardFront.transform.DOScaleX(1, customDuration != -1 ? customDuration : flipDuration));
+        sequence.Append(cardBack.transform.DOScaleX(0, anim ? flipDuration : 0));
+        sequence.Append(cardFront.transform.DOScaleX(1, anim ? flipDuration : 0));
         sequence.AppendCallback(() => {
-            if (customDuration == -1)
+            if (anim)
                 canSelected = true;
         });
     }
@@ -402,5 +408,17 @@ public class CardActor : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
         });
     }
 
+    #endregion
+
+    #region 更换样式相关
+
+    public void ReplaceCardBack(Sprite sprite) {
+        cardBack.sprite = sprite;
+    }
+    
+    public void ReplaceCardFace(Sprite sprite) {
+        cardFace.sprite = sprite;
+    }
+    
     #endregion
 }

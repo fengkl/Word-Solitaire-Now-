@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,17 +21,26 @@ public class SolitaireScene : MonoBehaviour {
     public GameObject moveGroup;
     public ResultGroup resultGroup;
     public SelectLevelPanelGroup selectLevelPanelGroup;
+    public CalenderGroup calenderGroup;
+    public NoMovesGroup noMovesGroup;
 
     [Header("卡牌预制体")]
     public CategoryCardActor categoryCardPrefabs;
-    public CharacterCardActor CharacterCardPrefabs;
+    public CharacterCardActor characterCardPrefabs;
+    
+    [Header("背景图&卡图")]
+    public List<Sprite> bgSpriteList;
+    public List<Sprite> cardBackSpriteList;
+    public List<Sprite> cardFaceSpriteList;
+    public List<Sprite> TextBgSpriteList;
 
     [Header("关卡数据")]
     private GameplayLevelData levelData; // 关卡数据
     private int aimCount; // 目标数量
     private int baseSlotCnt; // 基础区的卡槽数量
     private int stackSlotCnt; // 叠牌区的卡槽数量
-    private int moveCount = 0;
+    private int leftMoveCount; // 剩余步数
+    // private int moveCount = 0;
 
     [Header("发牌相关")]
     public float waitForStartTime = 1f; // 发牌前的等待时间
@@ -38,8 +48,10 @@ public class SolitaireScene : MonoBehaviour {
     private int allStackCardCount; // 叠牌区要发的卡牌张数
 
 
-    private void Start() {
+    private void Start()
+    {
         GameDataUtils.Instance.solitaireScene = this;
+        DOTween.SetTweensCapacity(500, 200); 
 
         InitLevelData();
 
@@ -51,7 +63,6 @@ public class SolitaireScene : MonoBehaviour {
             ContinueGame();
         else
             SetModeAndPlay(1);
-
     }
 
     private void InitLevelData() {
@@ -61,10 +72,17 @@ public class SolitaireScene : MonoBehaviour {
         GameDataUtils.Instance.loopLevelHandler.Init();
         GameDataUtils.Instance.levelHandler.LoadAllLevels();
         GameDataUtils.Instance.loopLevelHandler.LoadAllLevels();
-        // 恢复关卡进度
+        // 恢复普通关卡进度
         LevelData.levelIdDict[LevelMode.Easy] = PlayerPrefs.GetInt("LevelEasy", 1);
         LevelData.levelIdDict[LevelMode.Normal] = PlayerPrefs.GetInt("LevelNormal", 1);
         LevelData.levelIdDict[LevelMode.Hard] = PlayerPrefs.GetInt("LevelHard", 1);
+        // 恢复每日关卡信息
+        if (PlayerPrefs.HasKey("Daily"))
+        {
+            string json = PlayerPrefs.GetString("Daily");
+            DailyData dailyData = JsonUtility.FromJson<DailyData>(json);
+            LevelData.dailyLevelIdSet = dailyData.completeDailyLevels.ToHashSet();
+        }
         Debug.Log("关卡初始化完成");
     }
 
@@ -93,12 +111,13 @@ public class SolitaireScene : MonoBehaviour {
     /// <summary>
     /// 设置难度
     /// </summary>
-    public void SetModeAndPlay(int modeIndex) {
+    public void SetModeAndPlay(int modeIndex)
+    {
+        GameDataUtils.Instance.isGaming = false;
         LevelMode mode = (LevelMode)modeIndex;
         GameDataUtils.Instance.LoadLevel(mode);
         StartNewGame();
     }
-
 
     /// <summary>
     /// 开始游戏
@@ -106,9 +125,11 @@ public class SolitaireScene : MonoBehaviour {
     private void StartNewGame() {
         GameDataUtils.Instance.solitaireScene.resultGroup.gameObject.SetActive(false);
 
-        selectLevelPanelGroup.CloseSelectLevelPanel(0);
+        selectLevelPanelGroup.CloseSelectLevelPanel(false);
+        calenderGroup.CloseCalender(false);
+        
         GameDataUtils.Instance.moveCount = 0;
-        GameDataUtils.Instance.solitaireScene.InitGame();
+        InitGame();
     }
 
     /// <summary>
@@ -119,10 +140,10 @@ public class SolitaireScene : MonoBehaviour {
         GameDataUtils.Instance.isLoadGame = true;
         GameDataUtils.Instance.savedState = GameStateManager.Instance.LoadSavedGameState();
 
-        selectLevelPanelGroup.CloseSelectLevelPanel(0);
+        selectLevelPanelGroup.CloseSelectLevelPanel(false);
 
-        GameDataUtils.Instance.solitaireScene.SetAllGameGroupActive(true);
-        GameDataUtils.Instance.solitaireScene.LoadGame(GameDataUtils.Instance.savedState);
+        SetAllGameGroupActive(true);
+        LoadGame(GameDataUtils.Instance.savedState);
     }
 
     /// <summary>
@@ -132,19 +153,21 @@ public class SolitaireScene : MonoBehaviour {
         GameStateManager.Instance.ClearSavedGameState();
         LevelData.ResetLevelData();
         SetContinueButton();
-        selectLevelPanelGroup.UpdateText();
     }
 
     /// <summary>
     /// 构建场景
     /// </summary>
     public void BuildScene() {
+        // 重置场景
         ResetScene();
+        
         levelData = GameDataUtils.Instance.levelData; // 获取关卡数据
         aimCount = levelData.KVPs.Count; // 获取目标数量（卡牌种类总数）
         baseSlotCnt = levelData.TargetSlotCnt; // 获取基础区的卡槽数量
         stackSlotCnt = levelData.OperateSlotCnt; // 获取叠牌区的卡槽数量
-        moveCount = 0;
+        leftMoveCount = levelData.LeftMoveCnt; // 获取剩余步数
+        // moveCount = 0;
 
         baseGroup.Init(baseSlotCnt, levelData.TargetSlots);
         stackGroup.Init(stackSlotCnt, levelData.OperateSlots);
@@ -157,8 +180,34 @@ public class SolitaireScene : MonoBehaviour {
             counterGroup.SetPos();
         else
             counterGroup.SetPos(GameDataUtils.Instance.savedState.homeSlotState.counterPosition);
-        topGroup.InitProgressBar(aimCount);
-        topGroup.gameMode.SetModeText(levelData.Mode.ToString(), LevelData.levelIdDict[levelData.Mode]);
+
+        // 如果是Daily关卡
+        if (levelData.Mode == LevelMode.Daily)
+        {
+            topGroup.Init(levelData.Mode);
+            topGroup.gameMode.SetModeText(levelData.Mode);
+            topGroup.dailyMoves.InitMovesText(leftMoveCount);
+            topGroup.dailyTarget.Init(aimCount);
+            
+            ReplaceBg(bgSpriteList[1]);
+            ReplaceCardBack(cardBackSpriteList[1]);
+            ReplaceCardFace(cardFaceSpriteList[1]);
+            ReplaceTextBg(TextBgSpriteList[1]);
+            GameDataUtils.Instance.solitaireScene.bottomGroup.ReplaceDailyStyle();
+        }
+        // 如果是其他关卡
+        else
+        {
+            topGroup.Init(levelData.Mode);
+            topGroup.gameMode.SetModeText(levelData.Mode, LevelData.levelIdDict[levelData.Mode]);
+            topGroup.gameProgressBar.Init(aimCount);
+            
+            ReplaceBg(bgSpriteList[0]);
+            ReplaceCardBack(cardBackSpriteList[0]);
+            ReplaceCardFace(cardFaceSpriteList[0]);
+            ReplaceTextBg(TextBgSpriteList[0]);
+            GameDataUtils.Instance.solitaireScene.bottomGroup.ReplaceNormalStyle();
+        }
 
         SetHighlightGroup();
         SetProgressPointGroup();
@@ -187,7 +236,7 @@ public class SolitaireScene : MonoBehaviour {
 
             // 生成文字卡
             foreach (string word in words) {
-                CharacterCardActor characterCard = Instantiate(CharacterCardPrefabs).GetComponent<CharacterCardActor>();
+                CharacterCardActor characterCard = Instantiate(characterCardPrefabs).GetComponent<CharacterCardActor>();
                 // 是否使用精灵
                 characterCard.useSprite = levelData.KVPs[i].UseSprite;
                 // 设置父物体
@@ -260,7 +309,7 @@ public class SolitaireScene : MonoBehaviour {
                 targetSlot.cards.Push(card);
                 card.transform.SetAsLastSibling();
                 card.transform.position = targetSlot.transform.position;
-                card.FlipCard(0);
+                card.FlipCard(false);
                 card.isMoving = false;
                 card.canSelected = false;
 
@@ -271,8 +320,8 @@ public class SolitaireScene : MonoBehaviour {
 
                 // 调整分类卡的位置
                 if (targetSlot.cards.Count > 1 && !targetSlot.categoryCard.isTextScale) {
-                    targetSlot.categoryCard.MovingCardTextToSmall(0);
-                    targetSlot.categoryCard.MovingCardPos(0);
+                    targetSlot.categoryCard.MovingCardTextToSmall(false);
+                    targetSlot.categoryCard.MovingCardPos(false);
                 }
             }
         }
@@ -377,7 +426,9 @@ public class SolitaireScene : MonoBehaviour {
     /// </summary>
     public void CheckComplete() {
         if (GameDataUtils.Instance.completeCount == GameDataUtils.Instance.aimCount)
+        {
             StartCoroutine(HandleGameComplete());
+        }
     }
 
     /// <summary>
@@ -397,14 +448,30 @@ public class SolitaireScene : MonoBehaviour {
         bottomGroup.gameObject.SetActive(false);
 
         GameDataUtils.Instance.completeCount = 0;
-        LevelData.levelIdDict[GameDataUtils.Instance.mode]++;
-        if (GameDataUtils.Instance.mode == LevelMode.Easy)
-            PlayerPrefs.SetInt("LevelEasy", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
-        if (GameDataUtils.Instance.mode == LevelMode.Normal)
-            PlayerPrefs.SetInt("LevelNormal", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
-        if (GameDataUtils.Instance.mode == LevelMode.Hard)
-            PlayerPrefs.SetInt("LevelHard", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
-        topGroup.gameTimer.StopTimer();
+        
+        if (GameDataUtils.Instance.mode == LevelMode.Daily)
+        {
+            LevelData.dailyLevelIdSet.Add(GameDataUtils.Instance.levelId);
+            
+            // 存储每日关卡信息
+            List<int> list = LevelData.dailyLevelIdSet.ToList();
+            DailyData dailyData = new DailyData { completeDailyLevels = list };
+            string json = JsonUtility.ToJson(dailyData);
+            PlayerPrefs.SetString("Daily", json);
+        }
+        else
+        {
+            LevelData.levelIdDict[GameDataUtils.Instance.mode]++;
+        
+            if (GameDataUtils.Instance.mode == LevelMode.Easy)
+                PlayerPrefs.SetInt("LevelEasy", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
+            if (GameDataUtils.Instance.mode == LevelMode.Normal)
+                PlayerPrefs.SetInt("LevelNormal", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
+            if (GameDataUtils.Instance.mode == LevelMode.Hard)
+                PlayerPrefs.SetInt("LevelHard", LevelData.levelIdDict[GameDataUtils.Instance.mode]);
+        }
+        
+        // topGroup.gameTimer.StopTimer();
         resultGroup.Init();
         resultGroup.gameObject.SetActive(true);
         GameStateManager.Instance.ClearSavedGameState();
@@ -420,7 +487,7 @@ public class SolitaireScene : MonoBehaviour {
         cardGroup.gameObject.SetActive(isActive);
         highLightGroup.gameObject.SetActive(isActive);
         progressPointGroup.gameObject.SetActive(isActive);
-        if (GameDataUtils.Instance.isLoadGame)
+        // if (GameDataUtils.Instance.isLoadGame)
             counterGroup.gameObject.SetActive(isActive);
         topGroup.gameObject.SetActive(isActive);
         bottomGroup.gameObject.SetActive(isActive);
@@ -487,6 +554,38 @@ public class SolitaireScene : MonoBehaviour {
         BuildScene();
         GenerateCards();
         GameStateManager.Instance.RestoreGameState(gameState);
+        
+        // // 计算操作区卡槽的高光的大小和位置
+        // foreach (var slot in GameDataUtils.Instance.operateSlots)
+        // {
+        //     slot.UpdateKeyPosAndHeight();
+        // }
+        
         GameDataUtils.Instance.isLoadGame = false;
     }
+
+    #region 替换界面风格
+    
+    public void ReplaceBg(Sprite sprite) {
+        bg.sprite = sprite;
+    }
+    
+    public void ReplaceCardBack(Sprite sprite) {
+        Image characterCardBack = characterCardPrefabs.GetComponent<CharacterCardActor>().cardBack;
+        Image categoryCardBack = categoryCardPrefabs.GetComponent<CategoryCardActor>().cardBack;
+        characterCardBack.sprite = sprite;
+        categoryCardBack.sprite = sprite;
+    }
+    
+    public void ReplaceCardFace(Sprite sprite) {
+        Image cardFace = categoryCardPrefabs.GetComponent<CategoryCardActor>().cardFace;
+        cardFace.sprite = sprite;
+    }
+    
+    public void ReplaceTextBg(Sprite sprite) {
+        Image categoryCardTextBg = categoryCardPrefabs.GetComponent<CategoryCardActor>().textBg;
+        categoryCardTextBg.sprite = sprite;
+    }
+    
+    #endregion
 }

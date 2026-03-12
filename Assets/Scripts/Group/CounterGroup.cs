@@ -44,7 +44,6 @@ public class CounterGroup : MonoBehaviour
         if (rectTransform != null)
         {
             rectTransform.anchoredPosition = pos;
-            print(rectTransform.anchoredPosition);
         }
     }
 }

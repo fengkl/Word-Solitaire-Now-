@@ -15,6 +15,7 @@ public class GameState {
     public float gameTime; // 游戏时间
     public int completeCount; // 已完成牌组数量
     public int aimCount; // 目标牌组数量
+    public int leftMoveCount; // 剩余移动次数
     public int moveCount;
 
     // 卡牌状态列表
@@ -62,6 +63,7 @@ public class HomeSlotState {
     public List<string> cardNames = new List<string>(); // 卡槽内卡牌名称列表
     public int countText; // 卡牌数量
     public Vector2 counterPosition; // 位置
+    public bool isShowCountText; // 是否显示数量
 }
 
 /// <summary>
@@ -72,4 +74,12 @@ public class ModeLevelData {
     public int currentEasyLevelId = 1; // 当前简单关卡id
     public int currentMediumLevelId = 1; // 当前普通关卡id
     public int currentHardLevelId = 1; // 当前困难关卡id
+}
+
+/// <summary>
+/// 关卡进度数据
+/// </summary>
+[System.Serializable]
+public class DailyData {
+    public List<int> completeDailyLevels = new List<int>();
 }

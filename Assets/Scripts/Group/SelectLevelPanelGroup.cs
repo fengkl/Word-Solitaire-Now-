@@ -5,10 +5,15 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public class SelectLevelPanelGroup : MonoBehaviour {
+    public Image mask;
+    
     public Text easyLevelText;
     public Text MediumLevelText;
     public Text HardLevelText;
 
+    /// <summary>
+    /// 更新关卡数文本
+    /// </summary>
     public void UpdateText() {
         easyLevelText.text = "Level " + LevelData.levelIdDict[LevelMode.Easy];
         MediumLevelText.text = "Level " + LevelData.levelIdDict[LevelMode.Normal];
@@ -22,14 +27,17 @@ public class SelectLevelPanelGroup : MonoBehaviour {
         UpdateText();
         gameObject.SetActive(true);
         gameObject.transform.DOMoveY(-350, 0.2f);
+        mask.DOFade(240f / 255f, 0.2f);
     }
 
     /// <summary>
     /// 关闭选关面板
     /// </summary>
-    public void CloseSelectLevelPanel(int customDuration = -1) {
-        gameObject.transform.DOMoveY(-1500, customDuration != -1 ? customDuration : 0.2f).OnComplete(() => {
+    public void CloseSelectLevelPanel(bool anim = true) {
+        gameObject.transform.DOMoveY(-1500, anim ? 0.2f : 0).OnComplete(() => {
             gameObject.SetActive(false);
         });
+        
+        mask.DOFade(0, 0.2f);
     }
 }

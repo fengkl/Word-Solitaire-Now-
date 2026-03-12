@@ -35,10 +35,14 @@ public class HomeSlot : MonoBehaviour, IPointerClickHandler {
 
     public void OnPointerClick(PointerEventData eventData) {
         if (isMovingCard || isRefreshing) return;
+        
+        // 更新剩余步数计数器
+        GameDataUtils.Instance.solitaireScene.topGroup.dailyMoves.UpdateMovesText();
 
         // 如果homeSlot中还有牌，那么移动到取牌区，否则将取牌区中的所有牌回收
         GameDataUtils.Instance.moveCount++;
         GameDataUtils.Instance.solitaireScene.topGroup.gameTimer.UpdateMove();
+        
         if (cards.Count > 0) {
             isMovingCard = true;
 
@@ -51,18 +55,17 @@ public class HomeSlot : MonoBehaviour, IPointerClickHandler {
 
             isRefreshing = true;
 
-            Sequence sequence;
+            Sequence sequence = DOTween.Sequence();
 
             // 聚牌
-            GatherCards(leftTakeSlot);
-            sequence = GatherCards(rightTakeSlot);
+            GatherCards(sequence, leftTakeSlot);
+            GatherCards(sequence, rightTakeSlot);
 
             sequence.OnComplete(() => {
                 // 先将多的部分取出来
                 if (leftSlot.Count > rightSlot.Count)
                     AddCard(leftSlot.Pop());
-
-
+                
                 // 合并卡组
                 while (leftSlot.Count > 0 || rightSlot.Count > 0) {
                     if (leftSlot.Count > 0)
@@ -164,19 +167,12 @@ public class HomeSlot : MonoBehaviour, IPointerClickHandler {
     /// <summary>
     /// 聚牌
     /// </summary>
-    /// <param name="slot"></param>
-    /// <returns></returns>
-    private Sequence GatherCards(TakeSlot slot) {
-        // 创建序列动画
-        Sequence sequence = DOTween.Sequence();
-
+    private void GatherCards(Sequence sequence, TakeSlot slot) {
         // 移动牌组,将所有牌摞到一起
-        foreach (var cards in slot.cards) {
-            sequence.Join(cards.transform.DOMove(slot.transform.position, slot.moveToTakeAreaTime));
-            cards.MovingCardTextToBig();
+        foreach (var card in slot.cards) {
+            sequence.Join(card.transform.DOMove(slot.transform.position, slot.moveToTakeAreaTime));
+            card.MovingCardTextToBig();
         }
-
-        return sequence;
     }
 
     /// <summary>
